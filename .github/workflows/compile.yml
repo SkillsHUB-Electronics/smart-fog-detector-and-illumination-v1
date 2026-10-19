@@ -1,0 +1,20 @@
+name: Compile firmware
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install core and libraries
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install LiquidCrystal
+      - name: Compile for Arduino Uno
+        run: arduino-cli compile --fqbn arduino:avr:uno firmware/fog_illumination_uno
