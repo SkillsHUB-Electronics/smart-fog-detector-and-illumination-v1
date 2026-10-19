@@ -24,3 +24,5 @@ graphify-out/
 dashboard/data/
 data/
 drivers/
+# published public graph (generated from the full graph, see README)
+docs/graph/

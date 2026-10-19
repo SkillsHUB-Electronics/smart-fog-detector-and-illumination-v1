@@ -36,6 +36,12 @@ The dashboard monitors everything (fog state and probabilities, the five feature
 calibration) and sends commands to the board over USB serial: calibrate, demo mode, and settings such as brightness
 and confirmation times (stored in the Uno's EEPROM).
 
+## Code graph
+An interactive knowledge graph of the firmware, tools, dashboard and docs (built with [graphify](https://github.com/Graphify-Labs/graphify);
+functions, files, concepts and how they connect, grouped into communities):
+**https://skillshub-electronics.github.io/smart-fog-detector-and-illumination-v1/graph/**
+(the page is `docs/graph/index.html`; to serve it yourself enable GitHub Pages: *Settings > Pages > Deploy from branch > `main` / `/docs`*).
+
 ## Status
 Firmware compiles for `arduino:avr:uno` (55 % flash, 60 % RAM) and the serial link and dashboard were tested on a real
 Uno (CH340 clone). Sensor wiring still has to be verified on each build: DHT11 and laser readings were not valid yet in the
