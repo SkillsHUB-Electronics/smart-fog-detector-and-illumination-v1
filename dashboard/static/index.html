@@ -62,7 +62,7 @@ main{min-width:0;display:flex;flex-direction:column}
 .page.on{display:flex}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh)}
 .card.p{padding:18px}
-.card h2{margin:0 0 14px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:9px}
+.card h2{margin:0 0 14px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .card h2 .sp{flex:1}
 .card h2 small{font-weight:400;color:var(--tx-3);font-size:12px}
 .grid{display:grid;gap:16px}
@@ -140,6 +140,8 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
     <nav id="nav">
       <button class="on" data-p="live"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Live</button>
       <button data-p="sensors"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 8-10"/><path d="M3 21h18"/></svg>Sensors</button>
+      <button data-p="calibration"><svg class="i" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Calibration</button>
+      <button data-p="learning"><svg class="i" viewBox="0 0 24 24"><path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 1 5 3 3 0 0 0 4 3V3zM15 3a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-1 5 3 3 0 0 1-4 3V3z"/></svg>Learning</button>
       <button data-p="settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Settings</button>
       <button data-p="log"><svg class="i" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Log &amp; Record</button>
     </nav>
@@ -242,6 +244,76 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
       </div>
     </section>
 
+    <!-- ============================ CALIBRATION ============================ -->
+    <section class="page" id="page-calibration">
+      <div class="card p"><h2>Sensor calibration <small>linearise the readings, save them to calibration.h, upload to the board</small></h2>
+        <div class="rows" id="calStatus"></div>
+        <div class="note">The numbers are compiled into the firmware (<code>firmware/fog_illumination_uno/calibration.h</code>). The laser baseline is different: it lives in the board's EEPROM and is set with <b>Calibrate laser</b>.
+          After changing the LDR or DHT11 calibration the five model inputs shift, so <b>record new data and train again</b> (Learning page).</div></div>
+      <div class="grid g2">
+        <div class="card p"><h2>LDR — ambient light <small>raw counts → 0–100 %</small></h2>
+          <div class="rows"><div class="row"><span class="k">Live raw reading (0–1023)</span><span class="v" id="cLdrRaw">—</span></div>
+            <div class="row"><span class="k">Linearised with the inputs below</span><span class="v" id="cLdrNow">—</span></div></div>
+          <div class="conn" style="margin-top:12px">
+            <label class="f">Lower limit — darkest<input type="number" id="cLdrLo" min="0" max="900" step="1" style="width:110px"></label>
+            <button class="btn sm" id="cLdrLoCap">Capture current</button></div>
+          <div class="conn" style="margin-top:10px">
+            <label class="f">Upper limit — brightest<input type="number" id="cLdrHi" min="100" max="1023" step="1" style="width:110px"></label>
+            <button class="btn sm" id="cLdrHiCap">Capture current</button>
+            <button class="btn sm" id="cLdrReset">Reset to 0–1023</button></div>
+          <div class="note">Cover the LDR completely and click <i>Capture</i> for the lower limit, shine the brightest light you expect on it for the upper limit.
+            The reading is then stretched linearly so the darkest case is 0 % and the brightest is 100 %.</div></div>
+        <div class="card p"><h2>Laser receiver <small>clear-air baseline (EEPROM)</small></h2>
+          <div class="rows"><div class="row"><span class="k">Baseline</span><span class="v" id="cLaBase">—</span></div>
+            <div class="row"><span class="k">Signal now (counts)</span><span class="v" id="cLaSig">—</span></div>
+            <div class="row"><span class="k">Attenuation</span><span class="v" id="cLaAtt">—</span></div></div>
+          <div class="ctl" style="margin-top:12px"><button class="btn primary" id="cLaCal">Calibrate laser now</button></div>
+          <div class="note">Only in <b>clear air</b> with the laser aligned. It is refused when humidity &gt; 85 %, the signal is weak or unstable, or the receiver is saturated.</div></div>
+        <div class="card p" id="calTemp"></div>
+        <div class="card p" id="calHum"></div>
+      </div>
+      <div class="card p"><h2>Save &amp; upload <small id="calFileNote"></small></h2>
+        <pre class="console" id="calText" style="max-height:230px"></pre>
+        <div class="ctl" style="margin-top:12px">
+          <button class="btn primary" id="calSave">Save to calibration.h</button>
+          <button class="btn" id="calUpload">Save + compile + upload</button>
+          <button class="btn" id="calCompile">Compile only (check)</button>
+          <button class="btn sm" id="calReload">Reload from file</button></div>
+        <div class="note" id="calUpNote"></div>
+        <pre class="console" id="jobCal" style="margin-top:12px;max-height:240px" hidden></pre></div>
+    </section>
+
+    <!-- ============================ LEARNING ============================ -->
+    <section class="page" id="page-learning">
+      <div class="card p"><h2>Learning <small>collect labelled data → train the model → install it → upload</small>
+          <span class="sp"></span><span class="seg" id="lrKind"><button class="on" data-k="train">Recorded data</button><button data-k="sim">Simulator data (demo)</button></span></h2>
+        <div class="grid g3" style="gap:12px">
+          <div class="bn info"><b>1 · Collect.</b> Record every scenario with its true label (clear, light fog, dense fog) — include the tricky ones: humid but no fog, dark but no fog.</div>
+          <div class="bn info"><b>2 · Train.</b> The model is trained on a 80/20 split in blocks of consecutive rows, so the test score is honest.</div>
+          <div class="bn info"><b>3 · Install.</b> Writes <code>model_weights.h</code> (the old one is backed up) and uploads the firmware.</div></div></div>
+      <div class="card p"><h2>Record training data <small>same CSV as RECORD_DATA.bat → TRAIN_MODEL.bat</small></h2>
+        <div class="conn">
+          <label class="f">Label (what the air really is)<select id="rLabel"><option value="clear">clear</option><option value="light_fog">light_fog</option><option value="dense_fog">dense_fog</option></select></label>
+          <label class="f">Scenario note<input id="rNote" placeholder="e.g. humid_nofog" style="width:200px"></label>
+          <button class="btn primary" id="rStart">Start / change label</button>
+          <button class="btn danger" id="rStop">Stop</button>
+        </div>
+        <div class="row" style="margin-top:12px"><span class="k">Status</span><span class="v" id="rStat">not recording</span></div>
+        <div class="note">Rows with a sensor fault or recorded in demo mode are skipped. Simulator recordings are saved as <code>sim_*.csv</code> and are never used for training.</div>
+        <div style="overflow:auto;margin-top:10px"><table id="rFiles"></table></div></div>
+      <div class="card p"><h2>Dataset <small id="dsKind"></small></h2><div id="dsBox"><div class="empty">Loading…</div></div></div>
+      <div class="card p"><h2>Train &amp; install</h2>
+        <div class="rows"><div class="row"><span class="k">Model in the firmware (model_weights.h)</span><span class="v" id="lrModel">—</span></div></div>
+        <div class="ctl" style="margin-top:12px">
+          <button class="btn primary" id="lrTrain">Train &amp; evaluate</button>
+          <button class="btn" id="lrCompare">Train + compare sensors</button>
+          <button class="btn" id="lrInstall">Install into firmware</button>
+          <button class="btn" id="lrInstallUp">Install + upload to board</button></div>
+        <div class="note" id="lrNote">Training uses pure Python and can take a minute or more with many rows. <i>Install</i> trains on <b>all</b> recorded data and writes <code>model_weights.h</code>; it never uses simulator data.</div>
+        <pre class="console" id="jobLrn" style="margin-top:12px;max-height:260px" hidden></pre></div>
+      <div class="card p" id="lrRes" hidden></div>
+    </section>
+
     <!-- ============================ SETTINGS ============================ -->
     <section class="page" id="page-settings">
       <div class="card p"><h2>Connection</h2>
@@ -269,6 +341,12 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
         </div>
         <div class="note">Defaults come from <code>firmware/fog_illumination_uno/config.h</code>. Wiring, thresholds of the fault rules and the AI weights are compile-time: change them there (or with <code>TRAIN_MODEL.bat</code>) and re-upload.</div></div>
 
+      <div class="card p" id="wiringCard"><h2>Wiring <small>matches <code>config.h</code></small><span class="sp"></span><a class="btn sm" href="/docs/wiring_diagram.svg" target="_blank" rel="noopener">Open full size ↗</a></h2>
+        <div style="background:#fff;border-radius:10px;padding:8px;overflow:auto"><img src="/docs/wiring_diagram.svg" alt="Wiring diagram" style="width:100%;min-width:560px;height:auto;display:block"></div>
+        <div style="overflow:auto;margin-top:12px"><table id="pinTable"><tr><th>Signal</th><th>Pin</th><th>Notes</th></tr></table></div>
+        <div class="note">Also: <a href="/docs/block_diagram.svg" target="_blank" rel="noopener">block diagram ↗</a> · <a href="/docs/flowchart.svg" target="_blank" rel="noopener">flowchart ↗</a>.
+          D0/D1 are the USB serial port: keep them free.</div></div>
+
       <div class="card p" id="drvCard"><h2>USB-serial driver <small>CH340 · CP210x · FTDI · Arduino</small><span class="sp"></span><button class="btn sm" id="drvRescan">Rescan</button></h2>
         <div id="drvList"><div class="empty">Checking Windows…</div></div>
         <div class="ctl" style="margin-top:12px"><button class="btn" id="drvScan" title="Asks Windows to look for new hardware (needs administrator approval)">Scan for hardware changes</button></div>
@@ -290,16 +368,6 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
 
     <!-- ============================ LOG & RECORD ============================ -->
     <section class="page" id="page-log">
-      <div class="card p"><h2>Record training data <small>same CSV as RECORD_DATA.bat → TRAIN_MODEL.bat</small></h2>
-        <div class="conn">
-          <label class="f">Label (what the air really is)<select id="rLabel"><option value="clear">clear</option><option value="light_fog">light_fog</option><option value="dense_fog">dense_fog</option></select></label>
-          <label class="f">Scenario note<input id="rNote" placeholder="e.g. humid_nofog" style="width:200px"></label>
-          <button class="btn primary" id="rStart">Start / change label</button>
-          <button class="btn danger" id="rStop">Stop</button>
-        </div>
-        <div class="row" style="margin-top:12px"><span class="k">Status</span><span class="v" id="rStat">not recording</span></div>
-        <div class="note">Rows with a sensor fault or recorded in demo mode are skipped. Simulator recordings are saved as <code>sim_*.csv</code> and are never used for training.</div>
-        <div style="overflow:auto;margin-top:10px"><table id="rFiles"></table></div></div>
       <div class="grid g2">
         <div class="card p"><h2>Events <span class="sp"></span><select id="evKind" class="sm"><option value="">all</option><option>state</option><option>fault</option><option>calibration</option><option>settings</option><option>command</option><option>record</option><option>link</option><option>driver</option></select> <a class="btn sm" href="/api/logs.csv">CSV</a></h2>
           <div style="overflow:auto;max-height:420px"><table id="events"></table></div></div>
@@ -705,6 +773,238 @@ function windows(id) {
 ["winA", "winB"].forEach(windows);
 window.addEventListener("resize", drawCharts);
 
+/* ---------------------------------------------------------------- jobs: firmware upload, training */
+let JOBS = { seq: -1, state: "idle", lines: [], kind: "" }, jobFrom = "", jobWatch = null;
+const NL = String.fromCharCode(10);
+async function pollJob() {
+  const j = await api("/api/job").catch(() => null); if (!j) return;
+  const prev = JOBS; JOBS = j;
+  if (j.seq !== prev.seq) renderJob();
+  if (prev.state === "running" && j.state !== "running") {
+    loadLearning(); if (j.kind === "firmware") refresh();
+    if (jobWatch) { const f = jobWatch; jobWatch = null; f(j); }
+  }
+}
+setInterval(pollJob, 1500);
+function renderJob() {
+  const j = JOBS, txt = j.lines.join(NL), busy = j.state === "running";
+  const show = (id, on) => { const e = $(id); e.hidden = !on || j.state === "idle"; if (!e.hidden) { e.textContent = txt; e.scrollTop = 1e9; } };
+  show("jobCal", j.kind === "firmware" && jobFrom === "cal");
+  show("jobLrn", j.kind !== "firmware" || jobFrom === "learn");
+  ["calUpload", "calCompile", "lrTrain", "lrCompare", "lrInstall", "lrInstallUp"].forEach(id => $(id).disabled = busy);
+  renderLearning();
+}
+function uploadPort() { return S && S.link.mode === "serial" ? S.link.port : $("sPort").value; }
+
+/* ---------------------------------------------------------------- calibration page */
+let CALF = null, CALIN = {}, CALLIM = {}, PT = { t: [{ m: null }, { m: null }], h: [{ m: null }, { m: null }] };
+const CAL_CARDS = {
+  t: { title: "Temperature (DHT11)", unit: "°C", gain: "tGain", off: "tOff", shown: sm => sm && sm.temp, minSpan: 2, step: 0.1 },
+  h: { title: "Humidity (DHT11)", unit: "% RH", gain: "hGain", off: "hOff", shown: sm => sm && sm.hum, minSpan: 5, step: 0.5 }
+};
+function boardCal(k) { const b = (S && S.calBoard) || {}; return { gain: b[CAL_CARDS[k].gain] ?? 1, off: b[CAL_CARDS[k].off] ?? 0 }; }
+function rawOf(k) {
+  const v = CAL_CARDS[k].shown(S && S.sample); if (v == null) return null;
+  const b = boardCal(k); return (v - b.off) / b.gain;
+}
+function buildCalCards() {
+  for (const k of ["t", "h"]) {
+    const c = CAL_CARDS[k];
+    $(k === "t" ? "calTemp" : "calHum").innerHTML = `<h2>${c.title} <small>two-point linearisation</small></h2>
+      <div class="rows"><div class="row"><span class="k">Value shown now</span><span class="v" id="c${k}Shown">—</span></div>
+        <div class="row"><span class="k">DHT11 raw (before calibration)</span><span class="v" id="c${k}Raw">—</span></div></div>
+      <div style="overflow:auto"><table style="margin-top:8px"><tr><th>Point</th><th>DHT11 raw</th><th>True value (${c.unit})</th><th></th></tr>
+        ${[1, 2].map(n => `<tr><td>${n}</td><td class="num" id="c${k}${n}m">—</td><td><input type="number" id="c${k}${n}v" step="${c.step}" style="width:100px"></td><td><button class="btn sm" data-cap="${k}${n}">Capture</button></td></tr>`).join("")}</table></div>
+      <div class="conn" style="margin-top:12px"><button class="btn sm" id="c${k}Calc">Compute gain / offset</button>
+        <label class="f">Gain<input type="number" id="c${k}Gain" step="0.001" style="width:100px"></label>
+        <label class="f">Offset (${c.unit})<input type="number" id="c${k}Off" step="0.1" style="width:100px"></label>
+        <button class="btn sm" id="c${k}Reset">Reset (1 / 0)</button></div>
+      <div class="note">Hold the DHT11 next to a trusted reference, wait until both readings settle, click <i>Capture</i> and type the reference value. Do this at two different conditions for gain and offset;
+        with only point 1 just the offset is corrected (gain 1). Result: <code>corrected = DHT11 raw × gain + offset</code>.</div>`;
+    document.querySelectorAll(`[data-cap^="${k}"]`).forEach(b => b.onclick = () => {
+      const n = Number(b.dataset.cap[1]) - 1, r = rawOf(k);
+      if (r == null) return toast("No DHT11 reading yet.");
+      PT[k][n].m = r; $(`c${k}${n + 1}m`).textContent = r.toFixed(1);
+    });
+    $(`c${k}Calc`).onclick = () => {
+      const pts = [1, 2].map(n => ({ m: PT[k][n - 1].m, v: parseFloat($(`c${k}${n}v`).value) })).filter(p => p.m != null && isFinite(p.v));
+      if (!pts.length) return toast("Capture at least point 1 and type its true value.");
+      let g = 1, o;
+      if (pts.length === 2) {
+        if (Math.abs(pts[1].m - pts[0].m) < c.minSpan) return toast(`The two raw readings must differ by at least ${c.minSpan} ${c.unit}.`);
+        g = (pts[1].v - pts[0].v) / (pts[1].m - pts[0].m);
+      }
+      o = pts[0].v - g * pts[0].m;
+      CALIN[c.gain] = Math.round(g * 10000) / 10000; CALIN[c.off] = Math.round(o * 100) / 100; fillCalInputs(); renderCalibration();
+    };
+    $(`c${k}Reset`).onclick = () => { CALIN[c.gain] = 1; CALIN[c.off] = 0; fillCalInputs(); renderCalibration(); };
+    $(`c${k}Gain`).oninput = e => { CALIN[c.gain] = parseFloat(e.target.value); renderCalibration(); };
+    $(`c${k}Off`).oninput = e => { CALIN[c.off] = parseFloat(e.target.value); renderCalibration(); };
+  }
+  $("cLdrLo").oninput = e => { CALIN.ldrLo = parseInt(e.target.value, 10); renderCalibration(); };
+  $("cLdrHi").oninput = e => { CALIN.ldrHi = parseInt(e.target.value, 10); renderCalibration(); };
+}
+function fillCalInputs() {
+  $("cLdrLo").value = CALIN.ldrLo; $("cLdrHi").value = CALIN.ldrHi;
+  for (const k of ["t", "h"]) { $(`c${k}Gain`).value = CALIN[CAL_CARDS[k].gain]; $(`c${k}Off`).value = CALIN[CAL_CARDS[k].off]; }
+}
+async function loadCalibration(reset) {
+  const r = await api("/api/calibration").catch(() => null); if (!r) return;
+  CALF = r.file; CALLIM = r.fields;
+  if (reset || CALIN.ldrLo === undefined) { CALIN = { ...r.file }; fillCalInputs(); }
+  renderCalibration();
+}
+function calFmt(c) {
+  const sg = x => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(2);
+  return `LDR ${c.ldrLo}–${c.ldrHi} · temp ×${Number(c.tGain).toFixed(3)} ${sg(c.tOff)} · hum ×${Number(c.hGain).toFixed(3)} ${sg(c.hOff)}`;
+}
+function calText(v) {
+  const f = (x, d) => (isFinite(x) ? Number(x).toFixed(d) : "?");
+  return ["#define CAL_LDR_LO      " + v.ldrLo, "#define CAL_LDR_HI      " + v.ldrHi, "#define CAL_TEMP_GAIN   " + f(v.tGain, 4) + "f",
+    "#define CAL_TEMP_OFFSET " + f(v.tOff, 4) + "f", "#define CAL_HUM_GAIN    " + f(v.hGain, 4) + "f", "#define CAL_HUM_OFFSET  " + f(v.hOff, 4) + "f"].join(NL);
+}
+function calValid() {
+  for (const k of Object.keys(CALLIM)) { const v = CALIN[k]; if (!isFinite(v) || v < CALLIM[k].min || v > CALLIM[k].max) return `${k} must be between ${CALLIM[k].min} and ${CALLIM[k].max}`; }
+  if (CALIN.ldrHi - CALIN.ldrLo < 50) return "LDR upper limit must be at least 50 counts above the lower limit";
+  return "";
+}
+function renderCalibration() {
+  if (!CALF || !S) return;
+  const sm = S.sample, tag = (t, c) => `<span class="tag ${c}">${t}</span>`;
+  const board = S.calBoard && Object.keys(S.calBoard).length ? S.calBoard : null;
+  const same = board && Object.keys(CALF).every(k => Math.abs((board[k] ?? NaN) - CALF[k]) < 0.002);
+  const dirty = Object.keys(CALF).some(k => Math.abs((CALIN[k] ?? NaN) - CALF[k]) > 1e-9);
+  $("calStatus").innerHTML =
+    `<div class="row"><span class="k">In the firmware on the board</span><span class="v">${board ? calFmt(board) : S.link.mode ? "not reported (older firmware?)" : "not connected"}</span></div>
+     <div class="row"><span class="k">calibration.h on disk</span><span class="v">${calFmt(CALF)} ${board ? (same ? tag("matches the board", "ok") : tag("differs: upload needed", "warn")) : ""}</span></div>
+     <div class="row"><span class="k">Values on this page</span><span class="v">${calFmt(CALIN)} ${dirty ? tag("unsaved", "warn") : tag("saved", "ok")}</span></div>`;
+  const raw = sm ? sm.light_raw : null, lo = CALIN.ldrLo, hi = CALIN.ldrHi;
+  $("cLdrRaw").textContent = raw == null ? "—" : raw;
+  $("cLdrNow").textContent = raw == null || !(hi > lo) ? "—" : (Math.max(0, Math.min(1, (raw - lo) / (hi - lo))) * 100).toFixed(0) + " %";
+  for (const k of ["t", "h"]) {
+    const c = CAL_CARDS[k], v = c.shown(sm), r = rawOf(k);
+    $(`c${k}Shown`).textContent = v == null ? "—" : v.toFixed(1) + " " + c.unit;
+    $(`c${k}Raw`).textContent = r == null ? "—" : r.toFixed(1) + " " + c.unit;
+  }
+  const st = S.status;
+  $("cLaBase").textContent = sm && sm.baseline ? sm.baseline.toFixed(0) + " counts" : "not calibrated";
+  $("cLaSig").textContent = sm ? sm.laser_sig.toFixed(0) : "—";
+  $("cLaAtt").textContent = sm && st && st.calibrated ? (sm.f_attenuation * 100).toFixed(0) + " %" : "—";
+  $("calText").textContent = calText(CALIN);
+  const bad = calValid();
+  $("calFileNote").textContent = bad || "preview of the numbers written to calibration.h";
+  const m = S.link.mode;
+  $("calUpNote").textContent = m === "serial" ? `Upload goes to ${S.link.port}: the dashboard disconnects while the sketch is uploaded and reconnects afterwards.`
+    : m === "sim" ? "Simulator mode: “upload” compiles the firmware as a check and restarts the simulator with the new files."
+    : "Not connected: choose the COM port under Settings → Connection, then use Save + compile + upload.";
+  ["calSave", "calUpload"].forEach(id => $(id).disabled = !!bad || JOBS.state === "running");
+  $("calSave").title = bad;
+}
+async function saveCal() {
+  const bad = calValid(); if (bad) { toast(bad); throw new Error(bad); }
+  const r = await act("/api/calibration/save", CALIN);
+  CALF = r.file; CALIN = { ...r.file }; fillCalInputs(); renderCalibration(); toast("calibration.h saved (previous version backed up)");
+}
+function startUpload(from, compileOnly) {
+  const port = uploadPort();
+  if (!compileOnly && S.link.mode !== "sim" && !port) return toast("Choose a COM port first (Settings → Connection).");
+  const what = compileOnly ? "Compile the firmware (nothing is uploaded)?" : S.link.mode === "sim" ? "Compile and restart the simulator with the new files?"
+    : `Compile and upload the firmware to ${port}?${NL}${NL}The board restarts; the dashboard disconnects while uploading and reconnects afterwards.`;
+  if (!confirm(what)) return Promise.reject(new Error("cancelled"));
+  jobFrom = from;
+  return act("/api/firmware/upload", { port, compileOnly }).then(() => pollJob());
+}
+$("cLdrLoCap").onclick = () => { if (!S.sample) return toast("No reading yet."); CALIN.ldrLo = S.sample.light_raw; fillCalInputs(); renderCalibration(); };
+$("cLdrHiCap").onclick = () => { if (!S.sample) return toast("No reading yet."); CALIN.ldrHi = S.sample.light_raw; fillCalInputs(); renderCalibration(); };
+$("cLdrReset").onclick = () => { CALIN.ldrLo = 0; CALIN.ldrHi = 1023; fillCalInputs(); renderCalibration(); };
+$("cLaCal").onclick = () => $("bCal").click();
+$("calSave").onclick = () => saveCal().catch(() => {});
+$("calUpload").onclick = () => saveCal().then(() => startUpload("cal", false)).catch(() => {});
+$("calCompile").onclick = () => startUpload("cal", true).catch(() => {});
+$("calReload").onclick = () => loadCalibration(true);
+buildCalCards();
+setInterval(() => { if ($("page-calibration").classList.contains("on")) renderCalibration(); }, 1000);
+
+/* ---------------------------------------------------------------- learning page */
+let LR = null, LRKIND = "train";
+async function loadLearning() {
+  const r = await api("/api/learning?kind=" + LRKIND).catch(() => null); if (!r) return;
+  LR = r; renderLearning();
+}
+function renderLearning() {
+  if (!LR) return;
+  const d = LR.data, busy = JOBS.state === "running", sim = LRKIND === "sim";
+  $("dsKind").textContent = sim ? "simulator recordings (sim_*.csv) — only for trying the pipeline" : "recordings from the real board (train_*.csv)";
+  $("dsBox").innerHTML = d.files.length ? '<div style="overflow:auto"><table><tr><th>File</th><th>clear</th><th>light fog</th><th>dense fog</th><th>Scenario notes</th></tr>' +
+    d.files.map(f => `<tr><td>${esc(f.name)}</td><td class="num">${f.counts.clear}</td><td class="num">${f.counts.light_fog}</td><td class="num">${f.counts.dense_fog}</td><td>${esc(f.notes.join(", "))}</td></tr>`).join("") +
+    `<tr><th>Total ${d.rows}</th><th class="num">${d.totals.clear}</th><th class="num">${d.totals.light_fog}</th><th class="num">${d.totals.dense_fog}</th><th>${d.ready ? '<span class="tag ok">enough to train</span>' : '<span class="tag warn">need ≥ 5 rows of every class</span>'}</th></tr></table></div>`
+    : `<div class="empty">No ${sim ? "simulator" : "recorded"} data yet. Record above (connect the ${sim ? "simulator" : "board"} first).</div>`;
+  const m = LR.model;
+  $("lrModel").textContent = m.exists ? `${m.trainedOn} · ${new Date(m.modified * 1000).toLocaleString()}` : "missing";
+  $("lrTrain").disabled = $("lrCompare").disabled = busy || !d.ready;
+  $("lrInstall").disabled = busy || sim || !d.ready;
+  $("lrInstallUp").disabled = busy || sim || !d.ready || !LR.cli;
+  $("lrInstallUp").title = LR.cli ? "" : "arduino-cli not found (install the Arduino IDE 2)";
+}
+document.querySelectorAll("#lrKind button").forEach(b => b.onclick = () => {
+  LRKIND = b.dataset.k; document.querySelectorAll("#lrKind button").forEach(x => x.classList.toggle("on", x === b)); $("lrRes").hidden = true; loadLearning();
+});
+function runTrain(compare) {
+  jobFrom = "learn"; $("lrRes").hidden = true;
+  act("/api/learning/train", { kind: LRKIND, compare }).then(() => { jobWatch = showResult; pollJob(); }).catch(() => {});
+}
+function runInstall(andUpload) {
+  const what = "Train on ALL recorded data and overwrite model_weights.h?" + NL + "(The old file is backed up in backups/.)" + (andUpload ? NL + NL + "Then the firmware is uploaded to the board." : "");
+  if (!confirm(what)) return;
+  jobFrom = "learn"; $("lrRes").hidden = true;
+  act("/api/learning/install", {}).then(() => {
+    jobWatch = j => {
+      showResult(j);
+      if (j.state === "ok" && andUpload) { jobFrom = "learn"; const port = uploadPort(); act("/api/firmware/upload", { port, compileOnly: false }).then(() => pollJob()).catch(() => {}); }
+    };
+    pollJob();
+  }).catch(() => {});
+}
+$("lrTrain").onclick = () => runTrain(false);
+$("lrCompare").onclick = () => runTrain(true);
+$("lrInstall").onclick = () => runInstall(false);
+$("lrInstallUp").onclick = () => runInstall(true);
+function showResult(j) {
+  const r = j.result; if (j.state !== "ok" || !r || r.accuracy == null) return;
+  const cls = ["clear", "light_fog", "dense_fog"], pct = v => v == null ? "—" : v.toFixed(1) + " %";
+  const conf = r.confusion.length === 3 ? '<div style="overflow:auto"><table><tr><th>true ↓ / predicted →</th>' + cls.map(c => `<th>${c}</th>`).join("") + "</tr>" +
+    r.confusion.map((row, i) => `<tr><td>${cls[i]}</td>${row.map((v, k) => `<td class="num" style="${i === k ? "font-weight:700;color:var(--green)" : v ? "color:var(--red)" : ""}">${v}</td>`).join("")}</tr>`).join("") + "</table></div>" : "";
+  const rec = '<table><tr><th>Class</th><th>Recall</th><th>Precision</th></tr>' + cls.map(c => `<tr><td>${c}</td><td class="num">${pct(r.recall[c])}</td><td class="num">${pct(r.precision[c])}</td></tr>`).join("") + "</table>";
+  const infl = Object.entries(r.influence), mx = Math.max(...infl.map(x => x[1]), 0.001);
+  const inf = infl.length ? '<div class="bars">' + infl.map(([k, v]) => `<div class="bar"><span class="t">${k}</span><div class="track"><i style="width:${(v / mx * 100).toFixed(0)}%"></i></div><span class="num">${v.toFixed(2)}</span></div>`).join("") + "</div>" : "";
+  const cmp = r.compare.length ? '<div style="overflow:auto"><table><tr><th>Feature set</th><th>Accuracy</th><th>Clear</th><th>Light</th><th>Dense</th></tr>' +
+    r.compare.map(c => `<tr><td>${esc(c.name)}</td><td class="num">${c.acc.toFixed(1)} %</td><td class="num">${c.clear.toFixed(1)} %</td><td class="num">${c.light.toFixed(1)} %</td><td class="num">${c.dense.toFixed(1)} %</td></tr>`).join("") + "</table></div>" : "";
+  const drop = r.drop.length ? '<table><tr><th>Feature removed</th><th>Accuracy</th><th>Loss</th></tr>' + r.drop.map(d => `<tr><td>${d.feature}</td><td class="num">${d.acc.toFixed(1)} %</td><td class="num">${d.loss.toFixed(1)} points</td></tr>`).join("") + "</table>" : "";
+  const el = $("lrRes"); el.hidden = false;
+  el.innerHTML = `<h2>Result <small>${r.kind === "sim" ? "simulator data — not a real result" : "recorded data"} · ${r.rows} rows · tested on ${r.testRows} unseen rows${r.installed ? " · installed into model_weights.h" : ""}</small></h2>
+    ${r.kind === "sim" ? '<div class="bn warn" style="margin-bottom:12px">Simulator data only exercises the pipeline. Never deploy a model trained on it.</div>' : ""}
+    ${r.warning ? `<div class="bn warn" style="margin-bottom:12px">${esc(r.warning)}</div>` : ""}
+    <div class="grid g3"><div><div class="tile" style="padding:0 0 12px"><span class="k">Accuracy on unseen data</span><span class="v">${r.accuracy.toFixed(1)}<small>%</small></span></div>${rec}</div>
+      <div><b style="font-size:12.5px">Confusion matrix</b>${conf}</div><div><b style="font-size:12.5px">Which input matters</b><div style="margin-top:8px">${inf}</div></div></div>
+    ${cmp ? `<h2 style="margin-top:18px">Sensor comparison</h2>${cmp}` : ""}${drop ? `<h2 style="margin-top:18px">Drop-one test</h2>${drop}` : ""}`;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ---------------------------------------------------------------- wiring: pin table + page hooks */
+let PINS_LOADED = false;
+async function loadPins() {
+  if (PINS_LOADED) return;
+  const pins = await api("/api/pins").catch(() => null); if (!pins) return;
+  PINS_LOADED = true;
+  $("pinTable").innerHTML = "<tr><th>Signal</th><th>Pin</th><th>Notes</th></tr>" + pins.map(p => `<tr><td><code>${p.name}</code></td><td class="num">${p.pin}</td><td>${esc(p.note)}</td></tr>`).join("");
+}
+document.querySelectorAll("#nav button").forEach(b => b.addEventListener("click", () => {
+  const p = b.dataset.p;
+  if (p === "calibration") loadCalibration(false);
+  if (p === "learning") { loadLearning(); loadFiles(); }
+  if (p === "settings") loadPins();
+}));
+
 /* ---------------------------------------------------------------- data feed */
 function addHistory(s) {
   if (!s || s.ts === lastTs) return; lastTs = s.ts;
@@ -721,7 +1021,7 @@ async function start() {
   $("scn").innerHTML = $("sScn").innerHTML = optHtml;
   H = await api("/api/history?n=3600").catch(() => []);
   lastTs = H.length ? H[H.length - 1].t : 0;
-  S = st0; render(); loadPorts(); loadFiles(); loadDrivers(false); openPage();
+  S = st0; render(); loadPorts(); loadFiles(); loadDrivers(false); loadCalibration(true); pollJob(); openPage();
   if (q.has("snapshot")) return;
   const es = new EventSource("/api/stream");
   es.onmessage = e => onState(JSON.parse(e.data));

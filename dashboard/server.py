@@ -32,6 +32,7 @@ BASE = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(BASE, "tools"))
 sys.path.insert(0, HERE)
 import drivers  # noqa: E402
+import maintenance  # noqa: E402
 import serial_port  # noqa: E402
 import simulator  # noqa: E402
 
@@ -81,6 +82,7 @@ class Hub:
         self.sample = None
         self.status = None          # last S line
         self.cfg = {}
+        self.cal_board = {}      # calibration compiled into the board (K line)
         self.fw = ""
         self.last_d = 0.0
         self.last_line = 0.0
@@ -146,6 +148,7 @@ class Hub:
             self.link, self.mode, self.port, self.baud = link, mode, port, baud
             self.link_since, self.link_error = time.time(), ""
             self.header, self.sample, self.status, self.cfg, self.fw = [], None, None, {}, ""
+            self.cal_board = {}
             self.faults_prev = self.status_prev = None
             self.last_d = self.last_line = 0.0
             self.tx.clear()
@@ -227,6 +230,18 @@ class Hub:
                     self.dirty = True
                 if changed:
                     self.log("settings", "Device settings: " + " ".join(f"{k}={v}" for k, v in cfg.items()))
+        elif line.startswith("K,"):
+            cal = {}
+            for kv in line[2:].split(","):
+                k, _, v = kv.partition("=")
+                try:
+                    cal[k] = float(v)
+                except ValueError:
+                    pass
+            if cal:
+                with self.lock:
+                    self.cal_board = cal
+                    self.dirty = True
         elif line.startswith("#"):
             with self.lock:
                 self.console.append({"ts": now_iso(), "text": line})
@@ -371,7 +386,7 @@ class Hub:
                          "since": self.link_since, "fw": self.fw,
                          "dataAge": (time.time() - self.last_d) if self.last_d else None,
                          "hasStatus": self.status is not None},
-                "sample": self.sample, "status": self.status, "cfg": self.cfg,
+                "sample": self.sample, "status": self.status, "cfg": self.cfg, "calBoard": self.cal_board,
                 "limits": simulator.CFG_LIMITS,
                 "scenario": sim.scenario if sim else None, "scenarios": simulator.SCENARIOS,
                 "recording": {"on": r["on"], "label": r["label"], "note": r["note"],
@@ -405,6 +420,17 @@ def _clean(o):
 
 
 HUB = None
+
+
+def config_pins():
+    """PIN_* defines from config.h with their comments (for the wiring card)."""
+    out = []
+    with open(os.path.join(BASE, "firmware", "fog_illumination_uno", "config.h"), encoding="utf-8") as fh:
+        for line in fh:
+            m = re.match(r"#define\s+(PIN_\w+)\s+(\w+)\s*(?://\s*(.*))?", line)
+            if m:
+                out.append({"name": m.group(1), "pin": m.group(2), "note": (m.group(3) or "").strip()})
+    return out
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -491,6 +517,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(list(HUB.console)[-200:][::-1])
         if p == "/api/ports":
             return self._json(serial_ports())
+        if p == "/api/calibration":
+            return self._json({"file": maintenance.read_calibration(), "fields": {
+                k: {"min": v[1], "max": v[2], "default": v[3]} for k, v in maintenance.CAL_FIELDS.items()},
+                "text": maintenance.calibration_text(maintenance.read_calibration())})
+        if p == "/api/job":
+            return self._json(maintenance.JOB.snapshot())
+        if p == "/api/learning":
+            kind = q.get("kind", ["train"])[0]
+            return self._json({"data": maintenance.datasets("sim" if kind == "sim" else "train"),
+                               "model": maintenance.model_info(), "cli": bool(maintenance.find_cli())})
+        if p == "/api/pins":
+            return self._json(config_pins())
+        if p.startswith("/docs/"):
+            name = p[len("/docs/"):]
+            if re.match(r"^[\w-]+\.(svg|png)$", name):
+                return self._file(os.path.join(BASE, "docs", name), "image/svg+xml" if name.endswith(".svg") else "image/png")
         if p == "/api/drivers":
             res = drivers.detect()
             try:
@@ -575,6 +617,19 @@ class Handler(BaseHTTPRequestHandler):
                     HUB.link.set_scenario(d.get("name", ""))
                 HUB.log("simulator", f"Scenario: {d.get('name')}")
                 HUB.dirty = True
+            elif p == "/api/calibration/save":
+                vals, text, backup = maintenance.write_calibration(d)
+                HUB.log("calibration", "calibration.h written: " + " ".join(f"{k}={v}" for k, v in vals.items()))
+                return self._json({"ok": True, "file": vals, "text": text, "backup": os.path.basename(backup)})
+            elif p == "/api/firmware/upload":
+                maintenance.start_upload(HUB, str(d.get("port", "")), bool(d.get("compileOnly")))
+                HUB.log("firmware", "Compile" + ("" if d.get("compileOnly") else " + upload") + " started from the dashboard")
+            elif p == "/api/learning/train":
+                maintenance.start_training(bool(d.get("compare")), "sim" if d.get("kind") == "sim" else "train", False)
+                HUB.log("learning", "Training started (" + ("sim" if d.get("kind") == "sim" else "recorded") + " data)")
+            elif p == "/api/learning/install":
+                maintenance.start_training(False, "train", True)
+                HUB.log("learning", "Training + model_weights.h install started")
             elif p == "/api/drivers/rescan":
                 return self._json({"ok": True, "output": drivers.rescan()})
             elif p == "/api/drivers/install":

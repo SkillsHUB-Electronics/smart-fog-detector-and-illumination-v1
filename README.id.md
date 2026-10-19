@@ -17,6 +17,7 @@ DENSE FOG** dengan **edge AI** (softmax logistic regression), lalu menjalankan p
 | `RECORD_DATA.bat` / `TRAIN_MODEL.bat` | Klik dua kali untuk menjalankan tools |
 | `START_DASHBOARD.bat` | Dashboard PC: pantau dan atur Uno lewat USB (lihat bagian 7) |
 | `dashboard/` | `server.py` (server + serial), `simulator.py` (kembaran firmware tanpa hardware), `drivers.py` (bantuan driver USB-serial), `static/index.html` (halaman) |
+| `firmware/fog_illumination_uno/calibration.h` | Kalibrasi sensor (batas LDR, gain/offset suhu dan kelembapan); ditulis dari dashboard atau diedit manual |
 | `drivers/` | Taruh installer/driver USB-serial yang Anda unduh dari situs vendor (lihat bagian 7); tidak dijalankan otomatis |
 | `docs/` | Wiring diagram, block diagram, flowchart (SVG + PNG). Wiring dibuat ulang dengan `python docs/gen_wiring.py` |
 | `proposal/` | Proposal final (.docx) |
@@ -131,8 +132,17 @@ Klik dua kali `START_DASHBOARD.bat` (atau `python dashboard/server.py --open`). 
 |---|---|
 | **Live** | Status kabut (CLEAR/LIGHT/DENSE/FAULT) + keyakinan AI, adegan jalan dengan 8 LED, jalur laser, DHT11 dan LDR; suhu, kelembapan, dew spread, cahaya, sinyal laser, atenuasi; probabilitas; 5 fitur model; kesehatan perangkat (DHT11, laser, receiver, kalibrasi, kecerahan); banner mode degradasi; tombol **Calibrate**, **Demo**, **Next LCD page**, **Info**; grafik |
 | **Sensors** | Grafik suhu/dew spread, kelembapan, sinyal laser vs baseline, cahaya vs kecerahan lampu (1 menit - 1 jam); rumus fitur; baris data mentah terakhir |
-| **Settings** | Koneksi; **pengaturan perangkat** (tersimpan di EEPROM Uno, bertahan saat mati): kecerahan light/dense, ambang dan kecerahan malam, jumlah sampel konfirmasi naik/turun, kecepatan chase |
+| **Calibration** | Kalibrasi per sensor lalu simpan ke `calibration.h` dan upload: **LDR** (tangkap batas bawah = tergelap dan batas atas = tercerah, bacaan diluruskan ke 0-100 %), **suhu** dan **kelembapan** DHT11 (dua titik terhadap alat ukur acuan: gain dan offset, atau satu titik: offset saja), serta **laser** (tombol Calibrate laser, baseline di EEPROM). Status menunjukkan apakah isi `calibration.h` sama dengan yang ada di board; ada tombol Save, **Save + compile + upload**, dan Compile only |
+| **Learning** | Alur belajar AI: **rekam** data berlabel (kartu rekam dipindah ke sini), lihat **dataset** (jumlah baris per kelas), **Train & evaluate** (akurasi di data uji, confusion matrix, recall/precision, pengaruh tiap fitur), **Train + compare sensors** (tabel perbandingan sensor dan drop-one), lalu **Install into firmware** (menulis `model_weights.h`, cadangan lama di `backups/`) atau **Install + upload to board**. Data simulator hanya untuk mencoba alur dan tidak pernah dipasang |
+| **Settings** | Koneksi; **diagram wiring** (gambar `docs/wiring_diagram.svg` dan tabel pin dari `config.h`); driver USB-serial; **pengaturan perangkat** (tersimpan di EEPROM Uno, bertahan saat mati): kecerahan light/dense, ambang dan kecerahan malam, jumlah sampel konfirmasi naik/turun, kecepatan chase |
 | **Log & Record** | Daftar event (perubahan state, fault, kalibrasi, pengaturan, perintah; bisa diunduh CSV), pesan serial `#`, dan **rekam data latih** ke `data/train_*.csv` (format sama dengan `RECORD_DATA.bat`, langsung bisa `TRAIN_MODEL.bat`). Rekaman dari simulator disimpan sebagai `sim_*.csv` dan tidak dipakai training |
+
+### Kalibrasi, learning, dan upload dari dashboard
+- **Upload** memakai `arduino-cli` yang ikut terpasang bersama Arduino IDE 2 (atau yang ada di PATH): compile `arduino:avr:uno`, port dilepas, upload, lalu dashboard tersambung lagi. Hasil compile (ukuran flash dan RAM) tampil di log.
+  Di mode simulator, "upload" hanya compile (untuk memeriksa) dan me-restart simulator dengan `calibration.h` / `model_weights.h` yang baru. Satu pekerjaan berjalan sekali satu waktu.
+- Rumus kalibrasi: cahaya = `clamp((raw - LO) / (HI - LO), 0, 1)`; suhu = `DHT11 x gain + offset`; kelembapan = `DHT11 x gain + offset` (dibatasi 1-100 %). Nilai bawaan (0, 1023, gain 1, offset 0) tidak mengubah apa pun.
+- Setelah mengubah kalibrasi LDR atau DHT11, kelima masukan model bergeser: **rekam data baru dan latih ulang** di halaman Learning, lalu Install + upload.
+- Pelatihan menjalankan `tools/train_model.py` persis seperti `TRAIN_MODEL.bat`; halaman hanya menampilkan dan mem-parse laporannya.
 
 ### Driver USB-serial (CH340 / CP210x / FTDI / Arduino)
 Jika Uno sudah dicolok tetapi tidak ada port COM, buka **Settings → USB-serial driver**. Dashboard membaca daftar perangkat USB
@@ -155,6 +165,7 @@ setelah Anda menyetujui UAC. Fitur ini hanya untuk Windows; mode simulator tidak
 | PC → Uno | `!get` · `!set key=nilai` · `!reset` | baca / ubah / kembalikan default pengaturan perangkat |
 | Uno → PC | `S,mode,bright,calibrated,dhtFails,rxSat` | tiap sampel: mode lampu (0 clear, 1 light, 2 dense, 3 fault), kecerahan 0-255, kesehatan |
 | Uno → PC | `C,key=nilai,...` | pengaturan perangkat saat ini (saat boot dan setelah `!get`/`!set`) |
+| Uno → PC | `K,ldrLo=,ldrHi=,tGain=,tOff=,hGain=,hOff=` | kalibrasi yang dikompilasi di firmware (`calibration.h`), dikirim saat boot dan setelah `!get` |
 
 Kunci pengaturan (nilai di luar batas dipotong): `brightLight` 0-255, `brightDense` 0-255, `nightPct` 0-100,
 `nightScale` 0-100, `confirmUp` 1-20, `confirmDown` 1-20, `stepLight` 50-1000, `stepDense` 50-2000.

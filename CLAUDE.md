@@ -90,4 +90,12 @@ Semua pekerjaan di proyek ini, dari sesi mana pun, wajib:
   (`arduino:avr:uno`, build-path pendek karena path proyek panjang): flash 18008 B (55%), RAM 1243 B (60%), tanpa warning; diunggah ke COM3. Protokol serial dan dashboard
   terbukti jalan di Uno sungguhan. Temuan sensor: DHT11 tidak terbaca (`nan`, FAULT sebelum kalibrasi), sinyal laser ~10 count (< `CAL_MIN_SIGNAL` 40), LDR ~300/1023.
   Belum dikalibrasi.
+- **Kalibrasi sensor** (`firmware/.../calibration.h`, halaman Calibration): `CAL_LDR_LO/HI`, `CAL_TEMP_GAIN/OFFSET`, `CAL_HUM_GAIN/OFFSET`. Dipakai di `computeFeatures()` (cahaya) dan saat
+  pembacaan DHT11 (`sampleAndDecide()`); simulator membaca file yang sama (`_read_defines`) dan menerapkan rumus yang sama. Firmware mengirim baris `K,...` (nilai yang dikompilasi) saat boot dan
+  setelah `!get`; server menyimpannya sebagai `calBoard` untuk membandingkan dengan file. `dashboard/maintenance.py` membatasi dan menulis file (batas: `CAL_FIELDS`), cadangan lama di `backups/calibration_*.h`.
+  Nilai yang berubah menggeser fitur model: rekam ulang dan latih ulang.
+- **Upload dan learning dari dashboard** (`dashboard/maintenance.py`): satu `JOB` sekali jalan (upload = `arduino-cli compile` + `upload`, port dilepas lalu disambung lagi; latih/instal =
+  subproses `tools/train_model.py`). `model_weights.h` dicadangkan ke `backups/` sebelum `--install`; data `sim_*.csv` tidak pernah boleh di-install. Folder build di `%TEMP%\fog_build` (path pendek,
+  path proyek terlalu panjang untuk toolchain).
+- **Tes 2026-10-19 di Uno COM3:** upload dari dashboard berhasil (compile 18350 B / 56 %, RAM 1243 B / 60 %), board melaporkan baris `K,` dan dashboard tersambung ulang otomatis.
 

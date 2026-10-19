@@ -21,6 +21,7 @@
 #include <math.h>
 #include "config.h"
 #include "model_weights.h"
+#include "calibration.h"
 
 #define FW_VERSION "1.0.0"
 
@@ -223,6 +224,16 @@ void printCfg() {
   Serial.print(F(",stepDense=")); Serial.println(cfg.stepDense);
 }
 
+// Calibration compiled into this firmware (calibration.h), so the dashboard can compare it with the file on disk.
+void printCal() {
+  Serial.print(F("K,ldrLo=")); Serial.print(CAL_LDR_LO);
+  Serial.print(F(",ldrHi=")); Serial.print(CAL_LDR_HI);
+  Serial.print(F(",tGain=")); Serial.print(CAL_TEMP_GAIN, 4);
+  Serial.print(F(",tOff=")); Serial.print(CAL_TEMP_OFFSET, 2);
+  Serial.print(F(",hGain=")); Serial.print(CAL_HUM_GAIN, 4);
+  Serial.print(F(",hOff=")); Serial.println(CAL_HUM_OFFSET, 2);
+}
+
 // Values are clamped to the same limits the dashboard shows.
 bool setCfg(const char *k, long v) {
   if (!strcmp(k, "brightLight")) cfg.brightLight = constrain(v, 0, 255);
@@ -295,7 +306,7 @@ void computeFeatures() {
   feat[0] = clampf((t - 25.0f) / 10.0f, -2, 3);
   feat[1] = clampf((h - 70.0f) / 20.0f, -3.5f, 1.5f);
   feat[2] = clampf(dewSpread / 5.0f, 0, 4);
-  feat[3] = lightRaw / 1023.0f;
+  feat[3] = clampf((lightRaw - CAL_LDR_LO) / (float)(CAL_LDR_HI - CAL_LDR_LO), 0, 1);
   feat[4] = calibrated ? clampf(1.0f - laserSig / baseline, -0.2f, 1.2f) : 0.0f;
 }
 
@@ -383,7 +394,11 @@ void sampleAndDecide(uint32_t now) {
     first = false;
     lastDht = now;
     float t, h;
-    if (readDHT11(t, h)) { tempC = t; humRH = h; dhtFails = 0; }
+    if (readDHT11(t, h)) {
+      tempC = t * CAL_TEMP_GAIN + CAL_TEMP_OFFSET;
+      humRH = clampf(h * CAL_HUM_GAIN + CAL_HUM_OFFSET, 1, 100);
+      dhtFails = 0;
+    }
     else if (dhtFails < 250) dhtFails++;
   }
   lightRaw = readAvg(PIN_LDR, 8);
@@ -557,7 +572,7 @@ void printHelp() {
 // Line commands start with '!' (single letters below keep working):
 //   !get   !reset   !set key=value
 void handleLine(char *s) {
-  if (!strcmp(s, "get")) { printCfg(); return; }
+  if (!strcmp(s, "get")) { printCfg(); printCal(); return; }
   if (!strcmp(s, "reset")) { cfgDefaults(); EEPROM.put(CFG_ADDR, cfg); printCfg(); return; }
   if (!strncmp(s, "set ", 4)) {
     char *eq = strchr(s + 4, '=');
@@ -618,6 +633,7 @@ void setup() {
   Serial.println(F("# Fog Illumination Uno v" FW_VERSION));
   printHelp();
   printCfg();
+  printCal();
   if (!calibrated) {
     Serial.println(F("# Not calibrated: in clear air hold the CAL button 2 s or send 'c'"));
     showMessage("NOT CALIBRATED", "Hold CAL 2s", 2500);

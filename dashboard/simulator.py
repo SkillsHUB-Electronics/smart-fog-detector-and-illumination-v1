@@ -53,10 +53,12 @@ SCENARIOS = {
 
 
 def _read_defines():
+    """#define NAME number from config.h and calibration.h (a trailing 'f' as in 1.0f is ignored)."""
     d = {}
-    with open(os.path.join(FW_DIR, "config.h"), encoding="utf-8") as fh:
-        for m in re.finditer(r"^#define\s+(\w+)\s+(-?[\d.]+)", fh.read(), re.M):
-            d[m.group(1)] = float(m.group(2)) if "." in m.group(2) else int(m.group(2))
+    for name in ("config.h", "calibration.h"):
+        with open(os.path.join(FW_DIR, name), encoding="utf-8") as fh:
+            for m in re.finditer(r"^#define\s+(\w+)\s+(-?[\d.]+)", fh.read(), re.M):
+                d[m.group(1)] = float(m.group(2)) if "." in m.group(2) else int(m.group(2))
     return d
 
 
@@ -237,6 +239,7 @@ class FogSim:
         self._p(f"# Fog Illumination Uno v{self.fw}")
         self._print_help()
         self._print_cfg()
+        self._print_cal()
         if not self.calibrated:
             self._p("# Not calibrated: in clear air hold the CAL button 2 s or send 'c'")
         else:
@@ -249,6 +252,11 @@ class FogSim:
 
     def _print_cfg(self):
         self._p("C," + ",".join(f"{k}={self.cfg[k]}" for k in CFG_LIMITS))
+
+    def _print_cal(self):
+        c = self.cfgh
+        self._p(f"K,ldrLo={c['CAL_LDR_LO']},ldrHi={c['CAL_LDR_HI']},tGain={c['CAL_TEMP_GAIN']:.4f},"
+                f"tOff={c['CAL_TEMP_OFFSET']:.2f},hGain={c['CAL_HUM_GAIN']:.4f},hOff={c['CAL_HUM_OFFSET']:.2f}")
 
     def _print_info(self):
         self._p(f"# Fog Illumination Uno v{self.fw}")
@@ -304,7 +312,8 @@ class FogSim:
         f[0] = clampf((t - 25.0) / 10.0, -2, 3)
         f[1] = clampf((h - 70.0) / 20.0, -3.5, 1.5)
         f[2] = clampf(self.dew_spread / 5.0, 0, 4)
-        f[3] = self.light_raw / 1023.0
+        c = self.cfgh
+        f[3] = clampf((self.light_raw - c["CAL_LDR_LO"]) / float(c["CAL_LDR_HI"] - c["CAL_LDR_LO"]), 0, 1)
         f[4] = clampf(1.0 - self.laser_sig / self.baseline, -0.2, 1.2) if self.calibrated else 0.0
 
     def run_model(self):
@@ -369,7 +378,9 @@ class FogSim:
             self.last_dht = self.now
             r = self._read_dht11()
             if r:
-                self.temp_c, self.hum_rh = r
+                c = self.cfgh
+                self.temp_c = r[0] * c["CAL_TEMP_GAIN"] + c["CAL_TEMP_OFFSET"]
+                self.hum_rh = clampf(r[1] * c["CAL_HUM_GAIN"] + c["CAL_HUM_OFFSET"], 1, 100)
                 self.dht_fails = 0
             elif self.dht_fails < 250:
                 self.dht_fails += 1
@@ -394,7 +405,8 @@ class FogSim:
     # ------------------------------------------------------------- serial input (same parser as handleSerial)
     def _handle_line(self, s):
         if s == "get":
-            return self._print_cfg()
+            self._print_cfg()
+            return self._print_cal()
         if s == "reset":
             self.cfg_defaults()
             self._save_eeprom()
