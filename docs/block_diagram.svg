@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .t{font-size:19px;font-weight:700;fill:#0f172a}
+      .s{font-size:15px;fill:#334155}
+      .h{font-size:14px;font-weight:700;fill:#64748b;letter-spacing:1.5px}
+      .ln{stroke:#475569;stroke-width:2;fill:none;marker-end:url(#a)}
+      .dash{stroke:#94a3b8;stroke-width:2;fill:none;stroke-dasharray:7 6;marker-end:url(#a)}
+    </style>
+  </defs>
+  <rect width="1400" height="760" fill="#ffffff"/>
+
+  <text x="40" y="45" class="h">INPUTS / SENSORS</text>
+  <text x="440" y="45" class="h">ARDUINO UNO (EDGE AI)</text>
+  <text x="1040" y="45" class="h">OUTPUTS</text>
+
+  <!-- Sensors -->
+  <rect x="30" y="70" width="320" height="100" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text x="50" y="102" class="t">DHT11 (D2)</text>
+  <text x="50" y="128" class="s">Temperature + relative humidity</text>
+  <text x="50" y="150" class="s">→ dew-point spread (T − Td)</text>
+
+  <rect x="30" y="190" width="320" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text x="50" y="222" class="t">LDR (A0)</text>
+  <text x="50" y="248" class="s">Ambient light (day / night)</text>
+
+  <rect x="30" y="290" width="320" height="120" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text x="50" y="322" class="t">Laser (A2) + phototransistor (A1)</text>
+  <text x="50" y="348" class="s">Laser ON/OFF differential reading</text>
+  <text x="50" y="370" class="s">cancels sunlight</text>
+  <text x="50" y="392" class="s">→ fog attenuation 0…100 %</text>
+
+  <rect x="30" y="430" width="320" height="90" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <text x="50" y="462" class="t">Push buttons (A3, A4)</text>
+  <text x="50" y="488" class="s">Calibrate · LCD page · Demo mode</text>
+
+  <!-- Arduino -->
+  <rect x="420" y="60" width="540" height="480" rx="16" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  <rect x="450" y="85" width="480" height="85" rx="10" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="470" y="115" class="t">1. Feature extraction</text>
+  <text x="470" y="142" class="s">temp · humidity · dew spread · light · attenuation</text>
+  <text x="470" y="162" class="s">(scaled to similar ranges)</text>
+
+  <rect x="450" y="195" width="480" height="85" rx="10" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="470" y="225" class="t">2. Edge AI: softmax logistic regression</text>
+  <text x="470" y="252" class="s">P(clear), P(light fog), P(dense fog)</text>
+  <text x="470" y="272" class="s">weights from model_weights.h</text>
+
+  <rect x="450" y="305" width="480" height="85" rx="10" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="470" y="335" class="t">3. Decision logic</text>
+  <text x="470" y="362" class="s">hysteresis (2 samples up / 5 down)</text>
+  <text x="470" y="382" class="s">fail-safe: sensor fault → lights ON</text>
+
+  <rect x="450" y="415" width="480" height="100" rx="10" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="470" y="445" class="t">4. Output control</text>
+  <text x="470" y="472" class="s">chase pattern &amp; speed · brightness (OE PWM)</text>
+  <text x="470" y="494" class="s">LCD pages · CSV telemetry</text>
+
+  <path class="ln" d="M690 170 V193"/>
+  <path class="ln" d="M690 280 V303"/>
+  <path class="ln" d="M690 390 V413"/>
+
+  <!-- Sensor arrows: bus into feature extraction -->
+  <path d="M350 120 H400 M350 230 H400 M350 350 H400 M400 120 V350" stroke="#475569" stroke-width="2" fill="none"/>
+  <path class="ln" d="M400 127 H448"/>
+  <path class="ln" d="M350 475 H400 V465 H448"/>
+
+  <!-- Outputs -->
+  <rect x="1030" y="70" width="340" height="120" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="1050" y="102" class="t">74HC595 → 8 guiding LEDs</text>
+  <text x="1050" y="128" class="s">SPI: data D11, clock D13, latch D10</text>
+  <text x="1050" y="150" class="s">OE D9 (PWM) = brightness</text>
+  <text x="1050" y="172" class="s">chasing "guiding light" pattern</text>
+
+  <rect x="1030" y="210" width="340" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="1050" y="242" class="t">LCD 16×2 (D3–D8)</text>
+  <text x="1050" y="268" class="s">4-bit parallel · status, sensors, AI</text>
+
+  <rect x="1030" y="310" width="340" height="70" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="1050" y="342" class="t">Status LED (A5)</text>
+  <text x="1050" y="364" class="s">fog / fault / not calibrated</text>
+
+  <rect x="1030" y="400" width="340" height="140" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <text x="1050" y="432" class="t">Laptop (USB serial, 115200)</text>
+  <text x="1050" y="458" class="s">record_data.py: labelled CSV</text>
+  <text x="1050" y="480" class="s">train_model.py: training +</text>
+  <text x="1050" y="502" class="s">sensor comparison → model_weights.h</text>
+
+  <path class="ln" d="M930 465 H990 V130 H1028"/>
+  <path class="ln" d="M990 250 H1028"/>
+  <path class="ln" d="M990 345 H1028"/>
+  <path class="ln" d="M990 470 H1028"/>
+
+  <!-- Training loop -->
+  <path class="dash" d="M1200 540 V620 H690 V542"/>
+  <rect x="740" y="600" width="410" height="40" rx="8" fill="#ffffff"/>
+  <text x="755" y="626" class="s" font-style="italic">Training loop: new weights are compiled in and re-uploaded</text>
+
+  <text x="30" y="700" class="s">Power: USB 5 V, ≈165 mA total. All grounds common.</text>
+  <text x="30" y="725" class="s">Fog chamber prototype: acrylic box + ultrasonic fogger; laser path 30–50 cm.</text>
+</svg>

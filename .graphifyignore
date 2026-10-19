@@ -1,0 +1,26 @@
+# backups
+*.bak
+*.orig
+*.old
+*~
+backup/
+backups/
+*_backup*
+*.backup
+# python cache
+tools/__pycache__/
+__pycache__/
+*.pyc
+# secrets
+.env
+.env.*
+*.pem
+*.key
+secrets*
+credentials*
+# graphify output
+graphify-out/
+# dashboard runtime data (event DB, simulated EEPROM) and recorded CSV
+dashboard/data/
+data/
+drivers/

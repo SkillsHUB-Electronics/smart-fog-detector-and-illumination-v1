@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fog Lane Light</title>
+<style>
+/* ============================ design tokens (same look as the Camel Guard dashboard) ============================ */
+:root{
+  --side:#0b1a30; --side-2:#132844; --side-tx:#c8d6ea; --side-tx-dim:#7e93b2;
+  --bg:#f3f7fc; --card:#ffffff; --bd:#e3eaf4; --bd-2:#eef3f9;
+  --tx:#17233a; --tx-2:#5c6b85; --tx-3:#8a99b3;
+  --blue:#2563eb; --blue-soft:#e8f0fe; --red:#e8443a; --red-soft:#fdecea;
+  --amber:#f59e0b; --amber-soft:#fef3e2; --green:#12a150; --green-soft:#e6f6ed;
+  --purple:#7c5cf0; --purple-soft:#efebfe; --cyan:#0ea5e9; --cyan-soft:#e4f4fd;
+  --asphalt:#3d434c; --sh:0 1px 2px rgba(20,35,60,.05), 0 6px 18px rgba(20,35,60,.05); --r:14px;
+}
+:root:not([data-theme="light"]){ @media (prefers-color-scheme: dark){
+  --bg:#080e1a; --card:#101a2c; --bd:#1f2d45; --bd-2:#18233a; --tx:#e7eefb; --tx-2:#9fb0cb; --tx-3:#7285a4;
+  --blue-soft:#15294a; --red-soft:#3a1c1b; --amber-soft:#3a2c12; --green-soft:#10301f; --purple-soft:#241d47; --cyan-soft:#12293c;
+  --asphalt:#262a31; --sh:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+a{color:var(--cyan)}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-size:14px;font-family:"Inter","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.sidebar{background:var(--side);color:var(--side-tx);display:flex;flex-direction:column;padding:18px 14px;gap:22px;position:sticky;top:0;height:100vh}
+.brand{display:flex;gap:11px;align-items:center;padding:4px 6px}
+.brand .mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(160deg,#38bdf8,#2563eb);display:grid;place-items:center;color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.35)}
+.brand b{display:block;font-size:15px;color:#fff;letter-spacing:-.2px}
+.brand span{font-size:10.5px;color:var(--side-tx-dim);letter-spacing:.3px}
+nav{display:flex;flex-direction:column;gap:4px}
+nav button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border:0;border-radius:11px;background:transparent;color:var(--side-tx);cursor:pointer;font-size:14px;font-weight:500;text-align:left}
+nav button:hover{background:var(--side-2)}
+nav button.on{background:var(--blue);color:#fff;font-weight:600;box-shadow:0 4px 14px rgba(37,99,235,.4)}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:12px}
+.sys{display:flex;gap:10px;align-items:flex-start;padding:2px 8px}
+.sys .dot{width:9px;height:9px;border-radius:50%;background:var(--green);margin-top:4px;flex:none;box-shadow:0 0 0 3px rgba(18,161,80,.18)}
+.sys.off .dot{background:#8a99b3;box-shadow:0 0 0 3px rgba(138,153,179,.18)}
+.sys.bad .dot{background:var(--red);box-shadow:0 0 0 3px rgba(232,68,58,.22)}
+.sys b{font-size:12.5px;color:#dce7f7;display:block}
+.sys span{font-size:11px;color:var(--side-tx-dim)}
+main{min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 22px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--bd);border-radius:999px;padding:7px 14px;font-size:12.5px;color:var(--tx-2);box-shadow:var(--sh)}
+.pill b{color:var(--tx);font-weight:600}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.pill.off .dot{background:#94a3b8}.pill.bad .dot{background:var(--red)}.pill.warn .dot{background:var(--amber)}
+.topbar .sp{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;box-shadow:var(--sh)}
+.btn:hover{border-color:var(--blue);color:var(--blue)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.primary:hover{filter:brightness(1.08);color:#fff}
+.btn.danger{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}.btn.danger:hover{filter:brightness(1.07);color:#fff}
+.btn.on{background:var(--green);border-color:var(--green);color:#fff}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:9px}
+.page{padding:4px 22px 28px;display:none;flex-direction:column;gap:16px}
+.page.on{display:flex}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh)}
+.card.p{padding:18px}
+.card h2{margin:0 0 14px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:9px}
+.card h2 .sp{flex:1}
+.card h2 small{font-weight:400;color:var(--tx-3);font-size:12px}
+.grid{display:grid;gap:16px}
+.grid>*{min-width:0}
+select,input{max-width:100%}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hero-row{grid-template-columns:minmax(260px,320px) minmax(0,1fr)}
+.tiles{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:1250px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}.side-foot{display:none}nav{flex-direction:row;flex-wrap:wrap}.hero-row,.g2,.g3{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* hero */
+.hero{display:flex;flex-direction:column;gap:12px;justify-content:center}
+.hero .lab{font-size:12px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.8px}
+.hero .big{font-size:34px;font-weight:800;letter-spacing:-.8px;line-height:1.05}
+.hero .sub{color:var(--tx-2);font-size:13px}
+.hero.st0 .big{color:var(--green)}.hero.st1 .big{color:var(--amber)}.hero.st2 .big{color:var(--red)}.hero.st3 .big{color:var(--purple)}.hero.st9 .big{color:var(--tx-3)}
+.banners{display:flex;flex-direction:column;gap:8px}
+.bn{border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.4;border:1px solid transparent}
+.bn.info{background:var(--cyan-soft);color:var(--cyan)}.bn.warn{background:var(--amber-soft);color:var(--amber)}.bn.bad{background:var(--red-soft);color:var(--red)}.bn.ok{background:var(--green-soft);color:var(--green)}
+/* scene */
+.scene{width:100%;height:auto;display:block;border-radius:10px;background:#cfe0f3}
+/* tiles */
+.tile{padding:14px 16px;display:flex;flex-direction:column;gap:3px}
+.tile .k{font-size:11.5px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.6px}
+.tile .v{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.tile .v small{font-size:13px;font-weight:500;color:var(--tx-2);margin-left:3px}
+.tile .n{font-size:12px;color:var(--tx-2)}
+/* bars */
+.bars{display:flex;flex-direction:column;gap:11px}
+.bar{display:grid;grid-template-columns:96px 1fr 62px;gap:10px;align-items:center;font-size:12.5px}
+.bar .t{color:var(--tx-2)}.bar .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.track{height:10px;border-radius:6px;background:var(--bd-2);position:relative;overflow:hidden}
+.track i{position:absolute;top:0;bottom:0;left:0;border-radius:6px;background:var(--blue);transition:width .4s}
+.track i.c0{background:var(--green)}.track i.c1{background:var(--amber)}.track i.c2{background:var(--red)}
+.track u{position:absolute;top:0;bottom:0;width:2px;background:var(--tx-3);opacity:.6}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--bd-2);font-size:13px}
+.row:last-child{border-bottom:0}.row .k{color:var(--tx-2)}.row .v{font-weight:600;text-align:right}
+.tag{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600}
+.tag.ok{background:var(--green-soft);color:var(--green)}.tag.warn{background:var(--amber-soft);color:var(--amber)}.tag.bad{background:var(--red-soft);color:var(--red)}.tag.off{background:var(--bd-2);color:var(--tx-3)}.tag.info{background:var(--cyan-soft);color:var(--cyan)}
+.ctl{display:flex;flex-wrap:wrap;gap:10px}
+.note{font-size:12px;color:var(--tx-3);line-height:1.5;margin-top:10px}
+canvas.chart{width:100%;height:210px;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--tx-2);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.seg{display:inline-flex;border:1px solid var(--bd);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:var(--card);padding:5px 11px;font-size:12px;cursor:pointer;color:var(--tx-2)}
+.seg button.on{background:var(--blue);color:#fff}
+/* forms / tables */
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--tx-2)}
+input,select{background:var(--card);border:1px solid var(--bd);border-radius:9px;padding:8px 10px;min-width:0}
+input:focus,select:focus{outline:2px solid var(--blue-soft);border-color:var(--blue)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;color:var(--tx-3);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;padding:7px 8px;border-bottom:1px solid var(--bd)}
+td{padding:7px 8px;border-bottom:1px solid var(--bd-2);vertical-align:middle}
+td.num{font-variant-numeric:tabular-nums}
+.setrow{display:grid;grid-template-columns:minmax(150px,1.1fr) 120px 90px minmax(0,2fr);gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd-2)}
+.setrow:last-of-type{border-bottom:0}
+.setrow b{font-size:13px}.setrow small{color:var(--tx-3);font-size:12px}
+.setrow input.chg{border-color:var(--amber);background:var(--amber-soft)}
+@media(max-width:700px){.setrow{grid-template-columns:1fr 100px}.setrow small{grid-column:1/-1}}
+pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding:12px;font-size:12px;line-height:1.5;max-height:300px;overflow:auto;font-family:Consolas,"Cascadia Mono",monospace;white-space:pre-wrap}
+.empty{color:var(--tx-3);font-size:13px;padding:8px 0}
+.conn{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.err{color:var(--red);font-size:12.5px;margin-top:8px}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;max-width:420px}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark"><svg class="i" viewBox="0 0 24 24" style="width:21px;height:21px"><path d="M4 14h12M3 10h10M6 18h14M8 6h9"/></svg></div>
+      <div><b>Fog Lane Light</b><span>Arduino Uno · USB serial</span></div></div>
+    <nav id="nav">
+      <button class="on" data-p="live"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Live</button>
+      <button data-p="sensors"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 8-10"/><path d="M3 21h18"/></svg>Sensors</button>
+      <button data-p="settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Settings</button>
+      <button data-p="log"><svg class="i" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Log &amp; Record</button>
+    </nav>
+    <div class="side-foot"><div class="sys off" id="sys"><div class="dot"></div><div><b id="sysT">Not connected</b><span id="sysS">Choose a port in Settings</span></div></div></div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <span class="pill off" id="pLink"><span class="dot"></span><b id="pLinkT">Not connected</b></span>
+      <span class="pill" id="pFw" hidden>Firmware <b id="pFwT"></b></span>
+      <span class="pill" id="pAge" hidden>Last data <b id="pAgeT"></b></span>
+      <span class="pill" id="pRec" hidden><span class="dot" style="background:var(--red)"></span><b id="pRecT"></b></span>
+      <span class="sp"></span>
+      <span class="pill" id="pClock"><b id="clock"></b></span>
+    </header>
+
+    <!-- ============================ LIVE ============================ -->
+    <section class="page on" id="page-live">
+      <div class="card p" id="connectCard" hidden>
+        <h2>Not connected to an Arduino</h2>
+        <div class="conn">
+          <label class="f">COM port<select id="qPort" style="width:min(230px,100%)"></select></label>
+          <button class="btn primary" id="qConnect">Connect</button>
+          <button class="btn" id="qSim">Use simulator</button>
+          <button class="btn sm" id="qRefresh">Refresh ports</button>
+        </div>
+        <div class="note">Close the Arduino Serial Monitor and <code>RECORD_DATA.bat</code> first — only one program can use the COM port. No Arduino? The simulator behaves exactly like the board.</div>
+        <div class="err" id="qErr"></div>
+        <div class="bn warn" id="drvHint" hidden style="margin-top:12px">No COM port yet? Windows may be missing the USB-serial driver for your board —
+          open <a href="#settings" id="drvHintLink">Settings → USB-serial driver</a>.</div>
+      </div>
+
+      <div class="grid hero-row">
+        <div class="card p hero st9" id="hero">
+          <div class="lab">Fog state (AI decision)</div>
+          <div class="big" id="hState">—</div>
+          <div class="sub" id="hSub">waiting for data…</div>
+          <div class="banners" id="banners"></div>
+        </div>
+        <div class="card p">
+          <h2>Guide lights &amp; sensors <small id="sceneNote"></small></h2>
+          <svg class="scene" id="scene" viewBox="0 0 1000 330" role="img" aria-label="Road with guide lights, laser path and sensors"></svg>
+        </div>
+      </div>
+
+      <div class="grid tiles">
+        <div class="card tile"><span class="k">Temperature</span><span class="v" id="tTemp">—<small>°C</small></span><span class="n" id="tTempN">DHT11</span></div>
+        <div class="card tile"><span class="k">Humidity</span><span class="v" id="tHum">—<small>%</small></span><span class="n" id="tHumN">DHT11</span></div>
+        <div class="card tile"><span class="k">Dew-point spread</span><span class="v" id="tSpr">—<small>°C</small></span><span class="n">fog forms below ~2–3 °C</span></div>
+        <div class="card tile"><span class="k">Ambient light</span><span class="v" id="tLight">—<small>%</small></span><span class="n" id="tLightN">LDR</span></div>
+        <div class="card tile"><span class="k">Laser signal</span><span class="v" id="tSig">—<small>counts</small></span><span class="n" id="tSigN">baseline —</span></div>
+        <div class="card tile"><span class="k">Laser attenuation</span><span class="v" id="tAtt">—<small>%</small></span><span class="n">0 % clear · 100 % blocked</span></div>
+      </div>
+
+      <div class="grid g3">
+        <div class="card p"><h2>AI probabilities</h2><div class="bars" id="probs"></div>
+          <div class="note">Softmax logistic regression on the Uno. The state changes only after a few agreeing samples (hysteresis: <span id="hyst">2 up / 5 down</span>).</div></div>
+        <div class="card p"><h2>Model inputs (5 features)</h2><div class="bars" id="feats"></div></div>
+        <div class="card p"><h2>Device health</h2><div class="rows" id="health"></div></div>
+      </div>
+
+      <div class="grid g2">
+        <div class="card p"><h2>Controls <small>sent to the Uno over USB</small></h2>
+          <div class="ctl">
+            <button class="btn primary" id="bCal">Calibrate laser</button>
+            <button class="btn" id="bDemo">Demo mode</button>
+            <button class="btn" id="bPage">Next LCD page</button>
+            <button class="btn" id="bInfo">Print model info</button>
+          </div>
+          <div class="note">Calibrate only in <b>clear air</b> with the laser aligned. It is refused when humidity &gt; 85 %, the signal is unstable or weak, or the receiver is saturated.</div>
+          <div id="simBox" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)">
+            <label class="f" style="max-width:420px">Simulator scenario<select id="scn"></select></label>
+          </div>
+        </div>
+        <div class="card p"><h2>AI probabilities &amp; attenuation <span class="sp"></span><span class="seg" id="winA"></span></h2>
+          <canvas class="chart" id="chLive"></canvas><div class="legend" id="lgLive"></div></div>
+      </div>
+    </section>
+
+    <!-- ============================ SENSORS ============================ -->
+    <section class="page" id="page-sensors">
+      <div class="card p"><h2>History <span class="sp"></span><span class="seg" id="winB"></span></h2>
+        <div class="grid g2">
+          <div><b style="font-size:12.5px">Temperature &amp; dew-point spread (°C)</b><canvas class="chart" id="chT"></canvas><div class="legend" id="lgT"></div></div>
+          <div><b style="font-size:12.5px">Relative humidity (%)</b><canvas class="chart" id="chH"></canvas><div class="legend" id="lgH"></div></div>
+          <div><b style="font-size:12.5px">Laser signal vs clear-air baseline (counts)</b><canvas class="chart" id="chL"></canvas><div class="legend" id="lgL"></div></div>
+          <div><b style="font-size:12.5px">Ambient light &amp; lamp brightness (%)</b><canvas class="chart" id="chB"></canvas><div class="legend" id="lgB"></div></div>
+        </div></div>
+      <div class="grid g2">
+        <div class="card p"><h2>How the five features are made</h2>
+          <table><tr><th>Feature</th><th>Formula</th><th>Now</th></tr>
+            <tr><td>temp</td><td>clamp((T − 25) / 10, −2, 3)</td><td class="num" id="f0">—</td></tr>
+            <tr><td>humidity</td><td>clamp((RH − 70) / 20, −3.5, 1.5)</td><td class="num" id="f1">—</td></tr>
+            <tr><td>dew_spread</td><td>clamp((T − dew point) / 5, 0, 4)</td><td class="num" id="f2">—</td></tr>
+            <tr><td>light</td><td>LDR reading / 1023</td><td class="num" id="f3">—</td></tr>
+            <tr><td>attenuation</td><td>clamp(1 − laser / baseline, −0.2, 1.2)</td><td class="num" id="f4">—</td></tr></table>
+          <div class="note">The laser is switched ON and OFF for every reading; the difference cancels sunlight. Without calibration the attenuation feature is 0.</div></div>
+        <div class="card p"><h2>Last raw rows <small>CSV "D," lines</small></h2>
+          <div style="overflow:auto;max-height:290px"><table id="raw"></table></div></div>
+      </div>
+    </section>
+
+    <!-- ============================ SETTINGS ============================ -->
+    <section class="page" id="page-settings">
+      <div class="card p"><h2>Connection</h2>
+        <div class="conn">
+          <label class="f">COM port<select id="sPort" style="width:min(230px,100%)"></select></label>
+          <label class="f">Baud<select id="sBaud"><option>115200</option></select></label>
+          <button class="btn primary" id="sConnect">Connect</button>
+          <button class="btn" id="sDisc">Disconnect</button>
+          <button class="btn sm" id="sRefresh">Refresh ports</button>
+        </div>
+        <div class="conn" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)">
+          <label class="f">Simulator scenario<select id="sScn" style="width:min(300px,100%)"></select></label>
+          <label class="f">Speed<select id="sSpeed"><option value="1">1× (real time)</option><option value="5">5×</option><option value="20">20×</option></select></label>
+          <button class="btn" id="sSim">Start simulator</button>
+        </div>
+        <div class="err" id="sErr"></div>
+        <div class="note">Connecting restarts the Uno (like opening the Serial Monitor); data starts after ~3 s. Close other programs that use the COM port.</div></div>
+
+      <div class="card p"><h2>Device settings <small>stored in the Uno's EEPROM — they survive power-off</small></h2>
+        <div id="setForm"></div>
+        <div class="ctl" style="margin-top:14px">
+          <button class="btn primary" id="setApply">Apply changes</button>
+          <button class="btn" id="setRead">Read from device</button>
+          <button class="btn" id="setReset">Restore defaults</button>
+        </div>
+        <div class="note">Defaults come from <code>firmware/fog_illumination_uno/config.h</code>. Wiring, thresholds of the fault rules and the AI weights are compile-time: change them there (or with <code>TRAIN_MODEL.bat</code>) and re-upload.</div></div>
+
+      <div class="card p" id="drvCard"><h2>USB-serial driver <small>CH340 · CP210x · FTDI · Arduino</small><span class="sp"></span><button class="btn sm" id="drvRescan">Rescan</button></h2>
+        <div id="drvList"><div class="empty">Checking Windows…</div></div>
+        <div class="ctl" style="margin-top:12px"><button class="btn" id="drvScan" title="Asks Windows to look for new hardware (needs administrator approval)">Scan for hardware changes</button></div>
+        <div id="drvLocal" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)"></div>
+        <div class="note"><b>If the driver is missing:</b> 1) plug the Uno in with a <i>data</i> USB cable (some cables only charge) ·
+          2) click <b>Scan for hardware changes</b> — Windows Update often installs the CH340 driver by itself (needs internet) ·
+          3) otherwise open the vendor page above, download the driver, then either run the installer yourself or put it in the <code>drivers/</code> folder and click <b>Install</b> here
+          (Windows asks for administrator approval) · 4) click <b>Rescan</b>, then connect. Download only from the vendor's own site; the dashboard never downloads or runs anything by itself.</div></div>
+
+      <div class="card p"><h2>Serial protocol <small>115200 baud, 8N1</small></h2>
+        <div style="overflow:auto"><table><tr><th>Direction</th><th>Text</th><th>Meaning</th></tr>
+          <tr><td>PC → Uno</td><td><code>c d p i h</code></td><td>calibrate · demo on/off · next LCD page · info · help</td></tr>
+          <tr><td>PC → Uno</td><td><code>!get</code> <code>!set key=value</code> <code>!reset</code></td><td>read / write / restore the settings above</td></tr>
+          <tr><td>Uno → PC</td><td><code>H,…</code> <code>D,…</code></td><td>CSV header and one sample per second (same as the recorder)</td></tr>
+          <tr><td>Uno → PC</td><td><code>S,mode,bright,calibrated,dhtFails,rxSat</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), brightness 0–255, health</td></tr>
+          <tr><td>Uno → PC</td><td><code>C,key=value,…</code></td><td>current settings</td></tr>
+          <tr><td>Uno → PC</td><td><code># …</code></td><td>messages (state changes, calibration result, errors)</td></tr></table></div></div>
+    </section>
+
+    <!-- ============================ LOG & RECORD ============================ -->
+    <section class="page" id="page-log">
+      <div class="card p"><h2>Record training data <small>same CSV as RECORD_DATA.bat → TRAIN_MODEL.bat</small></h2>
+        <div class="conn">
+          <label class="f">Label (what the air really is)<select id="rLabel"><option value="clear">clear</option><option value="light_fog">light_fog</option><option value="dense_fog">dense_fog</option></select></label>
+          <label class="f">Scenario note<input id="rNote" placeholder="e.g. humid_nofog" style="width:200px"></label>
+          <button class="btn primary" id="rStart">Start / change label</button>
+          <button class="btn danger" id="rStop">Stop</button>
+        </div>
+        <div class="row" style="margin-top:12px"><span class="k">Status</span><span class="v" id="rStat">not recording</span></div>
+        <div class="note">Rows with a sensor fault or recorded in demo mode are skipped. Simulator recordings are saved as <code>sim_*.csv</code> and are never used for training.</div>
+        <div style="overflow:auto;margin-top:10px"><table id="rFiles"></table></div></div>
+      <div class="grid g2">
+        <div class="card p"><h2>Events <span class="sp"></span><select id="evKind" class="sm"><option value="">all</option><option>state</option><option>fault</option><option>calibration</option><option>settings</option><option>command</option><option>record</option><option>link</option><option>driver</option></select> <a class="btn sm" href="/api/logs.csv">CSV</a></h2>
+          <div style="overflow:auto;max-height:420px"><table id="events"></table></div></div>
+        <div class="card p"><h2>Serial messages <small>lines starting with #</small></h2><pre class="console" id="console"></pre></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const STATES = ["CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"];
+const FEATS = [["temp", -2, 3], ["humidity", -3.5, 1.5], ["dew_spread", 0, 4], ["light", 0, 1], ["attenuation", -0.2, 1.2]];
+const SET_INFO = {
+  brightLight: ["Brightness, light fog", "0–255, PWM on the 74HC595 OE pin"],
+  brightDense: ["Brightness, dense fog", "0–255"],
+  nightPct: ["Night threshold", "% ambient light below which it counts as night"],
+  nightScale: ["Night brightness", "% of the brightness used at night (less glare in fog)"],
+  confirmUp: ["Confirm: more severe", "agreeing samples (1 s each) before the state gets worse"],
+  confirmDown: ["Confirm: less severe", "agreeing samples before the state relaxes"],
+  stepLight: ["Chase step, light fog", "ms per step (normal speed)"],
+  stepDense: ["Chase step, dense fog", "ms per step (slower = slow down)"]
+};
+let S = null, H = [], lastTs = 0, logSeq = -1, conSeq = -1, winSec = 300;
+const q = new URLSearchParams(location.search);
+
+function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 3200); }
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+const act = (p, b, ok) => api(p, b).then(r => { if (ok) toast(ok); return r; }).catch(e => { toast(e.message); throw e; });
+const num = (v, n = 1) => v == null ? "—" : Number(v).toFixed(n);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------------------------------------------------------------- navigation */
+document.querySelectorAll("#nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#nav button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("on", p.id === "page-" + b.dataset.p));
+  location.hash = b.dataset.p; render();
+  if (b.dataset.p === "settings" && (!DRV || Date.now() - (DRV.at || 0) > 15000)) loadDrivers(!DRV);
+});
+function openPage() { const h = location.hash.slice(1); const b = document.querySelector(`#nav button[data-p="${h}"]`); if (b) b.click(); }
+
+/* ---------------------------------------------------------------- scene (SVG built once, attributes updated) */
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || $("scene")).appendChild(e); return e; };
+const lamps = []; let scn = {};
+function buildScene() {
+  const s = $("scene");
+  scn.sky = el("rect", { x: 0, y: 0, width: 1000, height: 330, fill: "#cfe0f3" });
+  scn.sun = el("circle", { cx: 880, cy: 52, r: 20, fill: "#fde68a" });
+  el("rect", { x: 0, y: 214, width: 1000, height: 116, fill: "#5b6470" });
+  el("rect", { x: 0, y: 206, width: 1000, height: 10, fill: "#8d96a3" });
+  for (let x = 20; x < 1000; x += 80) el("rect", { x, y: 273, width: 40, height: 4, fill: "#d9dee6", opacity: .7 });
+  // laser path
+  el("rect", { x: 28, y: 118, width: 46, height: 44, rx: 6, fill: "#1f2937" });
+  el("text", { x: 51, y: 144, "text-anchor": "middle", fill: "#fca5a5", "font-size": 11, "font-weight": 700 }, s).textContent = "LASER";
+  el("rect", { x: 926, y: 118, width: 46, height: 44, rx: 6, fill: "#1f2937" });
+  el("text", { x: 949, y: 144, "text-anchor": "middle", fill: "#bae6fd", "font-size": 11, "font-weight": 700 }, s).textContent = "RX";
+  scn.beam = el("line", { x1: 74, y1: 140, x2: 926, y2: 140, stroke: "#ef4444", "stroke-width": 4, "stroke-linecap": "round" });
+  scn.beamTx = el("text", { x: 500, y: 128, "text-anchor": "middle", "font-size": 12, fill: "#475569", "font-weight": 600 }); scn.beamTx.textContent = "";
+  // DHT11 + LDR boxes
+  el("rect", { x: 380, y: 28, width: 150, height: 52, rx: 8, fill: "#ffffff", opacity: .92 });
+  scn.dht = el("text", { x: 455, y: 50, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#17233a" });
+  scn.dht2 = el("text", { x: 455, y: 68, "text-anchor": "middle", "font-size": 11, fill: "#5c6b85" });
+  el("rect", { x: 700, y: 28, width: 130, height: 52, rx: 8, fill: "#ffffff", opacity: .92 });
+  scn.ldr = el("text", { x: 765, y: 50, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#17233a" });
+  scn.ldr2 = el("text", { x: 765, y: 68, "text-anchor": "middle", "font-size": 11, fill: "#5c6b85" });
+  // fog layer (over the scene, under the lamps)
+  scn.fog = el("g", { opacity: 0 });
+  for (const [cx, cy, rx, ry] of [[120, 180, 190, 70], [380, 150, 220, 80], [640, 190, 230, 75], [880, 150, 180, 70], [500, 240, 330, 60]])
+    el("ellipse", { cx, cy, rx, ry, fill: "#f4f6fa", opacity: .8 }, scn.fog);
+  // lamps along the road centre line (8 LEDs)
+  for (let i = 0; i < 8; i++) {
+    const cx = 70 + i * 123, cy = 268;
+    const glow = el("circle", { cx, cy, r: 34, fill: "#fde047", opacity: 0 });
+    const dot = el("circle", { cx, cy, r: 11, fill: "#475569", stroke: "#1f2937", "stroke-width": 2 });
+    el("text", { x: cx, y: cy + 40, "text-anchor": "middle", "font-size": 10, fill: "#e2e8f0" }, s).textContent = "LED " + (i + 1);
+    lamps.push({ glow, dot });
+  }
+  scn.mode = el("text", { x: 14, y: 22, "font-size": 12, "font-weight": 700, fill: "#17233a" });
+  scn.mode2 = el("text", { x: 14, y: 40, "font-size": 11, fill: "#475569" });
+  scn.dim = el("rect", { x: 0, y: 0, width: 1000, height: 330, fill: "#050b1a", opacity: 0, "pointer-events": "none" });
+}
+
+let chasePos = 0, lastStep = 0;
+function tickLamps() {
+  if (!S) return;
+  const st = S.status, cfg = S.cfg, now = performance.now();
+  let mode = st ? st.mode : null, bright = st ? st.bright : 0;
+  const on = new Array(8).fill(false);
+  if (mode === 3) { if (Math.floor(now / 400) % 2 === 0) on.fill(true); }
+  else if (mode === 1 || mode === 2) {
+    const step = mode === 2 ? (cfg.stepDense || 300) : (cfg.stepLight || 150);
+    if (now - lastStep >= step) { lastStep = now; chasePos = (chasePos + 1) % 8; }
+    for (let g = 0; g < 3; g++) on[(chasePos + 8 - g) % 8] = true;
+  }
+  const a = Math.max(0.15, bright / 255);
+  lamps.forEach((l, i) => {
+    l.glow.setAttribute("opacity", on[i] ? (0.15 + 0.6 * a).toFixed(2) : 0);
+    l.glow.setAttribute("r", on[i] ? (22 + 20 * a).toFixed(0) : 22);
+    l.dot.setAttribute("fill", on[i] ? (mode === 3 ? "#f87171" : "#fde047") : "#475569");
+  });
+}
+setInterval(tickLamps, 50);
+
+function updateScene() {
+  const sm = S.sample, st = S.status;
+  const att = sm && sm.f_attenuation != null ? Math.max(0, Math.min(1, sm.f_attenuation)) : 0;
+  const cal = st ? st.calibrated : false;
+  const light = sm && sm.f_light != null ? sm.f_light : 0.8;
+  const night = light < (S.cfg.nightPct != null ? S.cfg.nightPct / 100 : 0.2);
+  scn.fog.setAttribute("opacity", cal ? (0.1 + 0.85 * att).toFixed(2) : "0.1");
+  scn.sky.setAttribute("fill", night ? "#1e2a44" : "#cfe0f3");
+  scn.sun.setAttribute("fill", night ? "#e5e7eb" : "#fde68a");
+  scn.sun.setAttribute("r", night ? 14 : 20);
+  scn.dim.setAttribute("opacity", night ? 0.25 : 0);
+  const rx = cal && sm ? 1 - att : 0.35;
+  scn.beam.setAttribute("opacity", Math.max(0.08, rx).toFixed(2));
+  scn.beam.setAttribute("stroke-width", (1.5 + 3.5 * rx).toFixed(1));
+  scn.beamTx.textContent = !sm ? "" : cal ? `attenuation ${(att * 100).toFixed(0)} %` : "not calibrated";
+  scn.beamTx.setAttribute("fill", night ? "#cbd5e1" : "#475569");
+  scn.dht.textContent = sm && sm.temp != null ? `${num(sm.temp)} °C   ${num(sm.hum, 0)} %` : "DHT11 —";
+  scn.dht2.textContent = st && st.dhtFails ? `read failed ×${st.dhtFails}` : sm ? `DHT11 · spread ${num(sm.dew_spread)} °C` : "";
+  scn.ldr.textContent = sm ? `${(light * 100).toFixed(0)} % light` : "LDR —";
+  scn.ldr2.textContent = sm ? (night ? "LDR · night" : "LDR · day") : "";
+  const m = st ? st.mode : null;
+  scn.mode.textContent = m == null ? "" : `Lights: ${STATES[m]}${S.sample && S.sample.demo ? " (demo)" : ""}`;
+  scn.mode.setAttribute("fill", night ? "#e2e8f0" : "#17233a");
+  scn.mode2.textContent = m == null ? "" : `brightness ${(st.bright / 255 * 100).toFixed(0)} %`;
+  scn.mode2.setAttribute("fill", night ? "#cbd5e1" : "#475569");
+}
+
+/* ---------------------------------------------------------------- rendering */
+function banners() {
+  const out = [], sm = S.sample, st = S.status, L = S.link;
+  if (!L.mode) return [["bad", "Not connected to an Arduino."]];
+  if (L.dataAge != null && L.dataAge > 5) out.push(["bad", `No data for ${L.dataAge.toFixed(0)} s — check the USB cable or restart the dashboard.`]);
+  if (!sm) return out.concat([["info", "Waiting for the first sample (the Uno restarts when the port opens, ~3 s)."]]);
+  if (!L.hasStatus) out.push(["warn", "This firmware does not send the status line (S). Re-upload firmware/fog_illumination_uno to get brightness, mode and health."]);
+  if (sm.demo) out.push(["info", "Demo mode: the lights cycle CLEAR → LIGHT → DENSE → FAULT every 5 s and ignore the sensors."]);
+  if (st && !st.calibrated) out.push(["warn", "Not calibrated: the lights never go below LIGHT FOG. Calibrate in clear air (Controls)."]);
+  if (sm.fault & 2) out.push(["bad", "Laser fault: signal < 5 % of baseline although the air is dry — beam blocked or misaligned. All lights blink (fail-safe)."]);
+  if (sm.fault & 1) out.push(st && st.calibrated ? ["warn", "DHT11 lost (common in fog): running on the laser. The status LED blinks fast."] : ["bad", "DHT11 fault before calibration: all lights blink (fail-safe)."]);
+  if (st && st.dhtFails && !(sm.fault & 1)) out.push(["info", `DHT11 read failed ${st.dhtFails}× (fault after 3).`]);
+  if (st && st.rxSat) out.push(["warn", "Receiver saturated by strong light: laser readings ignored, last valid value kept."]);
+  if (!out.length) out.push(["ok", "All sensors healthy."]);
+  return out;
+}
+function render() {
+  if (!S) return;
+  const L = S.link, sm = S.sample, st = S.status, c = S.cfg;
+  const pl = $("pLink"); pl.className = "pill " + (L.mode ? (L.dataAge != null && L.dataAge > 5 ? "bad" : "") : "off");
+  $("pLinkT").textContent = L.mode === "sim" ? "Simulator" : L.mode === "serial" ? `${L.port} · ${L.baud}` : "Not connected";
+  $("pFw").hidden = !L.fw; $("pFwT").textContent = L.fw;
+  $("pAge").hidden = L.dataAge == null; $("pAgeT").textContent = L.dataAge == null ? "" : L.dataAge.toFixed(0) + " s ago";
+  const rc = S.recording, n = rc.counts.clear + rc.counts.light_fog + rc.counts.dense_fog;
+  $("pRec").hidden = !rc.on; $("pRecT").textContent = rc.on ? `REC ${rc.label || "paused"} · ${n} rows` : "";
+  const sys = $("sys"); sys.className = "sys " + (!L.mode ? "off" : (L.dataAge != null && L.dataAge > 5 ? "bad" : ""));
+  $("sysT").textContent = !L.mode ? "Not connected" : L.mode === "sim" ? "Simulator running" : "Arduino connected";
+  $("sysS").textContent = L.error || (L.mode ? (L.mode === "sim" ? S.scenarios[S.scenario] || "" : `${L.port} · ${L.baud} baud`) : "Choose a port in Settings");
+  $("connectCard").hidden = !!L.mode;
+  $("simBox").hidden = L.mode !== "sim";
+  if (L.mode === "sim" && document.activeElement !== $("scn")) $("scn").value = S.scenario;
+  $("sceneNote").textContent = "";
+
+  // hero
+  const mode = st ? st.mode : (sm ? sm.state : null);
+  const hero = $("hero"); hero.className = "card p hero st" + (mode == null ? 9 : mode);
+  $("hState").textContent = mode == null ? "—" : STATES[mode];
+  $("hSub").textContent = sm ? `AI: ${STATES[sm.pred]} ${(sm.p_clear != null ? Math.max(sm.p_clear, sm.p_light, sm.p_dense) * 100 : 0).toFixed(0)} % · decided state ${STATES[sm.state]}` : "waiting for data…";
+  $("banners").innerHTML = banners().map(b => `<div class="bn ${b[0]}">${esc(b[1])}</div>`).join("");
+  $("hyst").textContent = c.confirmUp ? `${c.confirmUp} up / ${c.confirmDown} down` : "2 up / 5 down";
+
+  // tiles
+  $("tTemp").firstChild.nodeValue = num(sm && sm.temp); $("tHum").firstChild.nodeValue = num(sm && sm.hum, 0);
+  $("tSpr").firstChild.nodeValue = num(sm && sm.dew_spread); $("tLight").firstChild.nodeValue = sm ? (sm.f_light * 100).toFixed(0) : "—";
+  $("tSig").firstChild.nodeValue = num(sm && sm.laser_sig, 0);
+  $("tSigN").textContent = sm && sm.baseline ? `baseline ${num(sm.baseline, 0)}` : "baseline —";
+  $("tAtt").firstChild.nodeValue = sm && st && st.calibrated ? (sm.f_attenuation * 100).toFixed(0) : "—";
+  $("tTempN").textContent = st && st.dhtFails ? `DHT11 failing ×${st.dhtFails}` : "DHT11";
+  $("tLightN").textContent = sm ? (sm.f_light < (c.nightPct != null ? c.nightPct / 100 : .2) ? "LDR · night mode" : "LDR · day") : "LDR";
+
+  // probabilities + features
+  const pr = sm ? [sm.p_clear, sm.p_light, sm.p_dense] : [0, 0, 0];
+  $("probs").innerHTML = pr.map((p, i) => `<div class="bar"><span class="t">${STATES[i]}</span><div class="track"><i class="c${i}" style="width:${(p * 100).toFixed(1)}%"></i></div><span class="num">${(p * 100).toFixed(0)} %</span></div>`).join("");
+  $("feats").innerHTML = FEATS.map((f, i) => {
+    const v = sm ? sm["f_" + f[0]] : null, w = v == null ? 0 : Math.max(0, Math.min(1, (v - f[1]) / (f[2] - f[1])));
+    const z = (0 - f[1]) / (f[2] - f[1]);
+    return `<div class="bar"><span class="t">${f[0]}</span><div class="track"><i style="width:${(w * 100).toFixed(1)}%"></i>${z > 0 && z < 1 ? `<u style="left:${(z * 100).toFixed(1)}%"></u>` : ""}</div><span class="num">${num(v, 2)}</span></div>`;
+  }).join("");
+  for (let i = 0; i < 5; i++) $("f" + i).textContent = sm ? num(sm["f_" + FEATS[i][0]], 3) : "—";
+
+  // health
+  const tag = (t, cls) => `<span class="tag ${cls}">${t}</span>`;
+  const rows = [];
+  if (sm) {
+    rows.push(["DHT11", sm.fault & 1 ? tag("FAULT", "bad") : st && st.dhtFails ? tag(`failing ×${st.dhtFails}`, "warn") : tag("OK", "ok")]);
+    rows.push(["Laser beam", sm.fault & 2 ? tag("FAULT", "bad") : tag("OK", "ok")]);
+    rows.push(["Receiver", st && st.rxSat ? tag("saturated", "warn") : tag("OK", "ok")]);
+    rows.push(["Calibration", st && !st.calibrated ? tag("not calibrated", "warn") : tag("baseline " + num(sm.baseline, 0), "ok")]);
+    rows.push(["Lights", mode == null ? "—" : tag(STATES[mode] + (sm.demo ? " · demo" : ""), mode === 3 ? "bad" : mode === 0 ? "ok" : "info")]);
+    rows.push(["Brightness", st ? `${(st.bright / 255 * 100).toFixed(0)} % (${st.bright}/255)` : "—"]);
+  }
+  $("health").innerHTML = rows.length ? rows.map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No data yet.</div>';
+
+  // controls
+  const demo = !!(sm && sm.demo);
+  $("bDemo").textContent = demo ? "Demo mode: ON (click to stop)" : "Demo mode"; $("bDemo").classList.toggle("on", demo);
+  ["bCal", "bDemo", "bPage", "bInfo"].forEach(id => $(id).disabled = !L.mode);
+
+  renderSettings(); renderRecord(); updateScene(); drawCharts();
+  if (S.logSeq !== logSeq) loadLogs();
+  if (S.consoleSeq !== conSeq) loadConsole();
+  renderRaw();
+}
+
+/* ---------------------------------------------------------------- settings */
+let setDirty = false;
+function renderSettings() {
+  const f = $("setForm"), keys = Object.keys(S.limits);
+  if (!f.children.length) {
+    f.innerHTML = keys.map(k => {
+      const [lo, hi] = S.limits[k], info = SET_INFO[k] || [k, ""];
+      return `<div class="setrow"><div><b>${info[0]}</b><br><small><code>${k}</code></small></div>
+        <input type="number" id="set_${k}" min="${lo}" max="${hi}" step="1">
+        <span class="n" id="cur_${k}" style="font-size:12px;color:var(--tx-3)"></span><small>${info[1]} (${lo}–${hi})</small></div>`;
+    }).join("");
+    keys.forEach(k => $("set_" + k).oninput = () => { setDirty = true; markChanged(); });
+  }
+  keys.forEach(k => {
+    const v = S.cfg[k], inp = $("set_" + k);
+    $("cur_" + k).textContent = v == null ? "" : "device: " + v;
+    if (!setDirty && document.activeElement !== inp && v != null) inp.value = v;
+  });
+  markChanged();
+  const dis = !S.link.mode;
+  ["setApply", "setRead", "setReset"].forEach(id => $(id).disabled = dis);
+}
+function markChanged() { Object.keys(S.limits).forEach(k => { const i = $("set_" + k); i.classList.toggle("chg", S.cfg[k] != null && String(S.cfg[k]) !== i.value); }); }
+$("setApply").onclick = () => {
+  const b = {}; Object.keys(S.limits).forEach(k => { const v = $("set_" + k).value; if (v !== "" && String(S.cfg[k]) !== v) b[k] = Number(v); });
+  if (!Object.keys(b).length) return toast("Nothing changed.");
+  act("/api/settings", b, "Settings sent to the Uno").then(() => { setDirty = false; });
+};
+$("setRead").onclick = () => act("/api/settings", { read: true }, "Reading settings…").then(() => { setDirty = false; });
+$("setReset").onclick = () => { if (confirm("Restore all device settings to the defaults from config.h?")) act("/api/settings", { reset: true }, "Defaults restored").then(() => { setDirty = false; }); };
+
+/* ---------------------------------------------------------------- connection */
+async function loadPorts() {
+  const ports = await api("/api/ports").catch(() => []);
+  const html = ports.length ? ports.map(p => `<option value="${p.port}">${p.port} — ${esc(p.driver)}${p.arduino ? " (Arduino?)" : ""}</option>`).join("") : '<option value="">no COM port found</option>';
+  const prev = $("sPort").value || $("qPort").value;
+  $("sPort").innerHTML = $("qPort").innerHTML = html;
+  const ard = ports.find(p => p.arduino);
+  $("sPort").value = $("qPort").value = (ports.find(p => p.port === prev) || ard || ports[0] || {}).port || "";
+}
+async function connect(port, errId) {
+  $(errId).textContent = "";
+  try { await api("/api/connect", { mode: "serial", port, baud: Number($("sBaud").value) }); toast("Connecting… data starts after ~3 s"); await refresh(); }
+  catch (e) { $(errId).textContent = e.message; }
+}
+async function sim(errId, scenario, speed) {
+  $(errId).textContent = "";
+  try { await api("/api/connect", { mode: "sim", scenario, speed }); await refresh(); } catch (e) { $(errId).textContent = e.message; }
+}
+$("qRefresh").onclick = $("sRefresh").onclick = loadPorts;
+$("qConnect").onclick = () => connect($("qPort").value, "qErr");
+$("sConnect").onclick = () => connect($("sPort").value, "sErr");
+$("qSim").onclick = () => sim("qErr", "auto", 1);
+$("sSim").onclick = () => sim("sErr", $("sScn").value, Number($("sSpeed").value));
+$("sDisc").onclick = () => act("/api/disconnect", {}, "Disconnected").then(refresh);
+$("scn").onchange = () => act("/api/scenario", { name: $("scn").value }, "Scenario changed");
+
+/* ---------------------------------------------------------------- USB-serial driver */
+let DRV = null;
+async function loadDrivers(show) {
+  if (show) $("drvList").innerHTML = '<div class="empty">Checking Windows…</div>';
+  DRV = await api("/api/drivers").catch(e => ({ supported: false, devices: [], local: [], error: e.message }));
+  DRV.at = Date.now(); renderDrivers();
+}
+function renderDrivers() {
+  const d = DRV; if (!d) return;
+  const tag = { installed: ["ok", "driver installed"], missing: ["bad", "driver missing"], problem: ["warn", "driver problem"], unknown: ["off", "unknown"] };
+  let h = "";
+  if (!d.supported) h = `<div class="empty">${esc(d.error || "Driver helper is for Windows only.")}</div>`;
+  else if (!d.devices.length) h = `<div class="empty">No USB-serial adapter detected. Plug the Uno in with a data USB cable, then click Rescan.${d.error ? `<br><span class="err">${esc(d.error)}</span>` : ""}</div>`;
+  else h = '<div style="overflow:auto"><table><tr><th>Device</th><th>USB id</th><th>Chip</th><th>COM</th><th>Status</th></tr>' + d.devices.map(x => {
+    const t = tag[x.state] || tag.unknown;
+    return `<tr><td>${esc(x.name)}</td><td class="num">${x.vid}:${x.pid}</td><td>${esc(x.chip)}</td><td>${x.com || "—"}</td><td><span class="tag ${t[0]}">${t[1]}</span></td></tr>` +
+      (x.state !== "installed" || x.note ? `<tr><td colspan="5" class="note" style="margin:0">${x.state !== "installed" ? esc(x.hint) + " " : ""}${esc(x.note)} ${x.url && x.state !== "installed" ? `<a href="${x.url}" target="_blank" rel="noopener">Open the ${esc(x.vendor)} download page ↗</a>` : ""}</td></tr>` : "");
+  }).join("") + "</table></div>";
+  $("drvList").innerHTML = h;
+  const L = d.local || [];
+  $("drvLocal").innerHTML = `<b style="font-size:12.5px">Drivers you downloaded</b> <span class="note" style="margin:0">— folder: <code>${esc(d.folder || "drivers/")}</code></span>` +
+    (L.length ? '<div style="overflow:auto"><table><tr><th>Item</th><th>Type</th><th>Signature</th><th></th></tr>' + L.map((i, n) =>
+      `<tr><td>${esc(i.name)}<div class="note" style="margin:2px 0 0">${i.sha256 ? "SHA-256 " + i.sha256.slice(0, 16) + "…" : ""}</div></td><td>${i.kind === "installer" ? "installer (.exe)" : i.kind === "inf-folder" ? `driver folder (${i.infs} .inf)` : ".zip — unzip it first"}</td>
+      <td>${i.kind !== "installer" ? "—" : i.signature === "Valid" ? `<span class="tag ok">signed</span> ${esc((i.signer.match(/CN=([^,]+)/) || [, ""])[1])}` : `<span class="tag warn">${esc(i.signature || "not checked")}</span>`}</td>
+      <td>${i.kind === "zip" ? "" : `<button class="btn sm primary" data-drv="${n}">Install…</button>`}</td></tr>`).join("") + "</table></div>"
+      : '<div class="empty">Nothing yet. Put the vendor installer (e.g. CH341SER.EXE) or the unzipped driver folder into that folder, then click Rescan.</div>');
+  $("drvLocal").querySelectorAll("button[data-drv]").forEach(b => b.onclick = () => {
+    const i = L[Number(b.dataset.drv)];
+    const warn = i.kind !== "installer" ? "" : i.signature === "Valid" ? "Signed by: " + i.signer : "WARNING: the installer is not validly signed (" + (i.signature || "unknown") + ").";
+    const msg = ["Install " + i.name + "?", "", "Only continue if you downloaded it from the vendor's official page.", warn, "Windows will ask for administrator approval."].filter(x => x !== "").join("\n");
+    if (!confirm(msg)) return;
+    act("/api/drivers/install", { name: i.name }).then(r => toast(r.message)).then(() => setTimeout(() => loadDrivers(false), 4000));
+  });
+  const bad = (d.devices || []).some(x => x.state === "missing" || x.state === "problem");
+  $("drvHint").hidden = !bad || !!(S && S.link.mode);
+}
+$("drvRescan").onclick = () => loadDrivers(true);
+$("drvScan").onclick = () => { $("drvScan").disabled = true; act("/api/drivers/rescan", {}, "Scanning for hardware changes… approve the Windows administrator prompt if it appears").then(() => setTimeout(() => loadDrivers(true), 3500)).finally(() => $("drvScan").disabled = false); };
+$("drvHintLink").onclick = e => { e.preventDefault(); document.querySelector('#nav button[data-p="settings"]').click(); };
+
+/* controls */
+$("bCal").onclick = () => { if (confirm("Calibrate the laser now?\n\nThe air between laser and receiver must be CLEAR (no fog, nothing in the beam).")) act("/api/command", { cmd: "calibrate" }, "Calibrating… watch the Events log"); };
+$("bDemo").onclick = () => act("/api/command", { cmd: "demo", value: !(S.sample && S.sample.demo) });
+$("bPage").onclick = () => act("/api/command", { cmd: "page" }, "Next LCD page");
+$("bInfo").onclick = () => { act("/api/command", { cmd: "info" }, "Model info → Serial messages"); };
+
+/* ---------------------------------------------------------------- record + logs */
+function renderRecord() {
+  const r = S.recording, n = r.counts.clear + r.counts.light_fog + r.counts.dense_fog;
+  $("rStat").textContent = r.on ? `recording "${r.label}" · note ${r.note || "-"} · clear ${r.counts.clear}, light ${r.counts.light_fog}, dense ${r.counts.dense_fog} (${n}) · skipped ${r.skipped} · ${r.file || "waiting for first row"}` : "not recording";
+  $("rStart").disabled = !S.link.mode; $("rStop").disabled = !r.on;
+}
+$("rStart").onclick = () => act("/api/record", { action: "start", label: $("rLabel").value, note: $("rNote").value }, "Recording");
+$("rStop").onclick = () => act("/api/record", { action: "stop" }, "Recording stopped").then(loadFiles);
+async function loadFiles() {
+  const r = await api("/api/recordings").catch(() => null); if (!r) return;
+  $("rFiles").innerHTML = r.files.length ? `<tr><th>File</th><th>Rows</th><th>Size</th><th></th></tr>` + r.files.map(f => `<tr><td>${f.name}${f.sim ? ' <span class="tag off">simulator</span>' : ""}</td><td class="num">${f.rows}</td><td class="num">${(f.bytes / 1024).toFixed(1)} kB</td><td><a href="/data/${f.name}">download</a></td></tr>`).join("") + `<tr><td colspan="4" class="note">Folder: ${esc(r.folder)}</td></tr>` : '<tr><td class="empty">No recordings yet.</td></tr>';
+}
+async function loadLogs() {
+  logSeq = S.logSeq;
+  const k = $("evKind").value, ev = (await api("/api/logs?n=300").catch(() => [])).filter(e => !k || e.kind === k);
+  $("events").innerHTML = ev.length ? ev.map(e => `<tr><td class="num" style="white-space:nowrap">${e.ts.slice(11)}</td><td><span class="tag ${e.kind === "fault" || e.kind === "error" ? "bad" : e.kind === "state" ? "info" : "off"}">${e.kind}</span></td><td>${esc(e.text)}</td></tr>`).join("") : '<tr><td class="empty">No events yet.</td></tr>';
+  if ($("page-log").classList.contains("on")) loadFiles();
+}
+async function loadConsole() {
+  conSeq = S.consoleSeq;
+  const c = await api("/api/console").catch(() => []);
+  $("console").textContent = c.slice().reverse().map(x => x.ts.slice(11) + "  " + x.text).join("\n");
+  $("console").scrollTop = 1e9;
+}
+$("evKind").onchange = () => { logSeq = -1; loadLogs(); };
+function renderRaw() {
+  if (!$("page-sensors").classList.contains("on")) return;
+  const rows = H.slice(-12).reverse();
+  $("raw").innerHTML = '<tr><th>Time</th><th>T</th><th>RH</th><th>Spread</th><th>Laser</th><th>Att</th><th>AI</th><th>Mode</th></tr>' + rows.map(p =>
+    `<tr><td class="num">${new Date(p.t * 1000).toLocaleTimeString()}</td><td class="num">${num(p.temp)}</td><td class="num">${num(p.hum, 0)}</td><td class="num">${num(p.spread)}</td><td class="num">${num(p.sig, 0)}</td><td class="num">${num(p.att, 2)}</td><td>${STATES[p.p.indexOf(Math.max(...p.p))] || ""}</td><td>${STATES[p.mode] || ""}</td></tr>`).join("");
+}
+
+/* ---------------------------------------------------------------- charts (canvas, no library) */
+function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+const COL = () => ({ green: css("--green"), amber: css("--amber"), red: css("--red"), blue: css("--blue"), purple: css("--purple"), cyan: css("--cyan"), tx: css("--tx-3"), grid: css("--bd-2") });
+function drawChart(cv, series, o = {}) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const c = COL(), t1 = Date.now() / 1000, t0 = t1 - winSec;
+  const pts = H.filter(p => p.t >= t0);
+  let lo = o.min, hi = o.max;
+  if (lo == null || hi == null) {
+    let a = Infinity, b = -Infinity;
+    pts.forEach(p => series.forEach(s => { const v = s.get(p); if (v != null) { a = Math.min(a, v); b = Math.max(b, v); } }));
+    if (!isFinite(a)) { a = 0; b = 1; } const pad = (b - a) * 0.12 || 1; lo = lo ?? a - pad; hi = hi ?? b + pad;
+  }
+  const L = 38, R = 8, T = 8, B = 20, X = t => L + (t - t0) / winSec * (w - L - R), Y = v => T + (1 - (v - lo) / (hi - lo)) * (h - T - B);
+  g.font = "11px sans-serif"; g.fillStyle = c.tx; g.strokeStyle = c.grid; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const v = lo + (hi - lo) * i / 4, y = Y(v); g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); g.textAlign = "right"; g.fillText(Math.abs(hi - lo) < 5 ? v.toFixed(2) : v.toFixed(0), L - 5, y + 4); }
+  for (let i = 0; i <= 3; i++) { const t = t0 + winSec * i / 3; g.textAlign = i === 0 ? "left" : i === 3 ? "right" : "center"; g.fillText(new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: winSec <= 300 ? "2-digit" : undefined }), X(t), h - 5); }
+  if (!pts.length) { g.textAlign = "center"; g.fillText("no data yet", w / 2, h / 2); return; }
+  series.forEach(s => {
+    g.strokeStyle = c[s.color] || s.color; g.lineWidth = 2; g.setLineDash(s.dash || []); g.beginPath(); let pen = false;
+    pts.forEach(p => { const v = s.get(p); if (v == null) { pen = false; return; } const x = X(p.t), y = Y(v); pen ? g.lineTo(x, y) : g.moveTo(x, y); pen = true; });
+    g.stroke(); g.setLineDash([]);
+  });
+}
+const CH = [
+  ["chLive", [{ n: "clear", color: "green", get: p => p.p[0] }, { n: "light fog", color: "amber", get: p => p.p[1] }, { n: "dense fog", color: "red", get: p => p.p[2] }, { n: "attenuation", color: "blue", dash: [5, 4], get: p => p.att }], { min: 0, max: 1 }, "lgLive"],
+  ["chT", [{ n: "temperature", color: "red", get: p => p.temp }, { n: "dew-point spread", color: "cyan", get: p => p.spread }], {}, "lgT"],
+  ["chH", [{ n: "humidity", color: "blue", get: p => p.hum }], { min: 0, max: 100 }, "lgH"],
+  ["chL", [{ n: "laser signal", color: "purple", get: p => p.sig }, { n: "baseline", color: "tx", dash: [5, 4], get: p => (S && S.sample && S.sample.baseline) || null }], {}, "lgL"],
+  ["chB", [{ n: "ambient light", color: "amber", get: p => p.light == null ? null : p.light * 100 }, { n: "lamp brightness", color: "green", get: p => p.bright / 255 * 100 }], { min: 0, max: 100 }, "lgB"],
+];
+function drawCharts() {
+  CH.forEach(([id, series, o, lg]) => {
+    if (!$(id).offsetParent) return;
+    drawChart($(id), series, o);
+    $(lg).innerHTML = series.map(s => `<span><i style="background:${COL()[s.color] || s.color}"></i>${s.n}</span>`).join("");
+  });
+}
+function windows(id) {
+  $(id).innerHTML = [["1 min", 60], ["5 min", 300], ["30 min", 1800], ["1 h", 3600]].map(w => `<button data-s="${w[1]}" class="${w[1] === winSec ? "on" : ""}">${w[0]}</button>`).join("");
+  $(id).querySelectorAll("button").forEach(b => b.onclick = () => { winSec = Number(b.dataset.s); ["winA", "winB"].forEach(windows); drawCharts(); });
+}
+["winA", "winB"].forEach(windows);
+window.addEventListener("resize", drawCharts);
+
+/* ---------------------------------------------------------------- data feed */
+function addHistory(s) {
+  if (!s || s.ts === lastTs) return; lastTs = s.ts;
+  const st = S.status || {};
+  H.push({ t: s.ts, temp: s.temp, hum: s.hum, spread: s.dew_spread, light: s.f_light, sig: s.laser_sig, att: s.f_attenuation, p: [s.p_clear, s.p_light, s.p_dense], state: s.state, mode: st.mode ?? s.state, bright: st.bright || 0, fault: s.fault });
+  if (H.length > 3600) H.shift();
+}
+function onState(j) { S = j; addHistory(j.sample); render(); }
+async function refresh() { onState(await api("/api/state")); }
+async function start() {
+  buildScene();
+  const st0 = await api("/api/state");
+  const optHtml = Object.keys(st0.scenarios).map(k => `<option value="${k}">${k} — ${esc(st0.scenarios[k])}</option>`).join("");
+  $("scn").innerHTML = $("sScn").innerHTML = optHtml;
+  H = await api("/api/history?n=3600").catch(() => []);
+  lastTs = H.length ? H[H.length - 1].t : 0;
+  S = st0; render(); loadPorts(); loadFiles(); loadDrivers(false); openPage();
+  if (q.has("snapshot")) return;
+  const es = new EventSource("/api/stream");
+  es.onmessage = e => onState(JSON.parse(e.data));
+  es.onerror = () => { $("sysT").textContent = "Dashboard server not reachable"; $("sys").className = "sys bad"; };
+}
+setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString(); if (S && S.link.dataAge != null && S.sample) { S.link.dataAge += 1; render(); } }, 1000);
+start();
+</script>
+</body>
+</html>

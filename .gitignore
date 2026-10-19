@@ -1,0 +1,20 @@
+# local backups made while editing
+backups/
+*.bak
+*.orig
+
+# python
+__pycache__/
+*.pyc
+
+# generated / local-only data
+data/
+dashboard/data/
+graphify-out/
+
+# downloaded USB drivers (never commit binaries)
+drivers/*
+!drivers/README.txt
+
+# private documents (graduation proposal) - add manually if you want them public
+proposal/
