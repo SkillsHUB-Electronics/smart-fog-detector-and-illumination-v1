@@ -12,6 +12,7 @@ commands and the "!get / !set key=value / !reset" lines (see README.id.md).
 Close the Arduino Serial Monitor and tools/record_data.py first: only one program can own a COM port.
 """
 import argparse
+import base64
 import collections
 import csv
 import json
@@ -40,12 +41,124 @@ STATIC = os.path.join(HERE, "static")
 DATA_DIR = os.path.join(BASE, "data")  # same folder as tools/record_data.py (train_*.csv)
 DB_DIR = os.path.join(HERE, "data")
 DB_PATH = os.path.join(DB_DIR, "fog_log.db")
+PHOTO_DIR = os.path.join(DB_DIR, "photos")
+TEAM_LIMITS = {"author": (0, 3), "supervisor": (0, 2)}  # (min kept on delete, max)
+PHOTO_MAX_BYTES = 2 * 1024 * 1024
 HISTORY_MAX = 3600        # one sample per second = 1 hour
 TX_GAP_S = 0.15           # pause between lines sent to the Uno (its serial buffer is only 64 bytes)
 LABELS = ["clear", "light_fog", "dense_fog"]
 LIGHT_LABELS = ["day", "twilight", "night"]
 COMMANDS = {"calibrate": "c", "demo": "d", "page": "p", "info": "i", "help": "h"}
 INT_FIELDS = {"light_raw", "pred", "state", "fault", "demo", "ms"}
+
+# ---------------------------------------------------------------- project team (Author page)
+def team_list():
+    with HUB.lock:
+        rows = [dict(zip(("id", "role", "name", "idno", "email", "photo", "sort"), r))
+                for r in HUB.db.execute("SELECT id,role,name,idno,email,photo,sort FROM team ORDER BY sort, id")]
+    for r in rows:
+        r["photoUrl"] = f"/team-photo/{r['photo']}" if r.get("photo") else ""
+    return {"authors": [r for r in rows if r["role"] == "author"],
+            "supervisors": [r for r in rows if r["role"] == "supervisor"]}
+
+
+def _photo_bytes(data_url):
+    """data:image/...;base64,... -> (bytes, ext) after checking the file really is an image."""
+    m = re.match(r"data:image/(jpeg|jpg|png|webp);base64,(.+)$", data_url or "", re.S)
+    if not m:
+        return None, "the photo must be a JPEG, PNG or WebP image"
+    try:
+        raw = base64.b64decode(m.group(2), validate=True)
+    except ValueError:
+        return None, "the photo could not be read"
+    if len(raw) > PHOTO_MAX_BYTES:
+        return None, "the photo is larger than 2 MB"
+    if raw[:3] == b"\xff\xd8\xff":
+        return raw, "jpg"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return raw, "png"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return raw, "webp"
+    return None, "the file is not a JPEG, PNG or WebP image"
+
+
+def _drop_photo(name):
+    if name:
+        try:
+            os.remove(os.path.join(PHOTO_DIR, name))
+        except OSError:
+            pass
+
+
+def _team_one(pid):
+    with HUB.lock:
+        r = HUB.db.execute("SELECT id,role,name,idno,email,photo FROM team WHERE id=?", (pid,)).fetchone()
+    return dict(zip(("id", "role", "name", "idno", "email", "photo"), r)) if r else None
+
+
+def _team_count(role):
+    with HUB.lock:
+        return HUB.db.execute("SELECT COUNT(*) FROM team WHERE role=?", (role,)).fetchone()[0]
+
+
+def _team_exec(sql, args=()):
+    with HUB.lock:
+        cur = HUB.db.execute(sql, args)
+        HUB.db.commit()
+        return cur.lastrowid
+
+
+def team_save(data):
+    role = data.get("role")
+    if role not in TEAM_LIMITS:
+        return {"error": "role must be author or supervisor"}, 400
+    name = re.sub(r"\s+", " ", str(data.get("name") or "")).strip()[:60]
+    idno = str(data.get("idno") or "").strip()[:30]
+    email = str(data.get("email") or "").strip()[:80]
+    if not name:
+        return {"error": "the name is required"}, 400
+    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return {"error": "that e-mail address does not look right"}, 400
+    pid = data.get("id")
+    old = _team_one(pid) if pid else None
+    if pid and not old:
+        return {"error": "that person no longer exists"}, 404
+    if (not old or old["role"] != role) and _team_count(role) >= TEAM_LIMITS[role][1]:
+        return {"error": f"at most {TEAM_LIMITS[role][1]} {role}s"}, 409
+    photo = old["photo"] if old else ""
+    new_photo = None
+    if data.get("photo"):
+        raw, ext = _photo_bytes(data["photo"])
+        if raw is None:
+            return {"error": ext}, 400
+        new_photo = (raw, ext)
+    if old:
+        _team_exec("UPDATE team SET role=?, name=?, idno=?, email=? WHERE id=?", (role, name, idno, email, pid))
+    else:
+        with HUB.lock:
+            sort = HUB.db.execute("SELECT COALESCE(MAX(sort), 0) + 1 FROM team").fetchone()[0]
+        pid = _team_exec("INSERT INTO team(role, name, idno, email, photo, sort) VALUES (?,?,?,?,?,?)",
+                         (role, name, idno, email, "", sort))
+    if new_photo or data.get("removePhoto"):
+        _drop_photo(photo)
+        photo = ""
+        if new_photo:
+            os.makedirs(PHOTO_DIR, exist_ok=True)
+            photo = f"{int(pid)}-{int(time.time())}.{new_photo[1]}"   # new name = no stale browser cache
+            with open(os.path.join(PHOTO_DIR, photo), "wb") as fh:
+                fh.write(new_photo[0])
+        _team_exec("UPDATE team SET photo=? WHERE id=?", (photo, pid))
+    return {"ok": True, "id": pid, **team_list()}, 200
+
+
+def team_delete(data):
+    p = _team_one(data.get("id"))
+    if not p:
+        return {"error": "that person no longer exists"}, 404
+    _team_exec("DELETE FROM team WHERE id=?", (p["id"],))
+    _drop_photo(p["photo"])
+    return {"ok": True, **team_list()}, 200
+
 
 
 ARDUINO_DRIVERS = ("USBSER", "CH341", "SILABSER")
@@ -111,6 +224,7 @@ class Hub:
         os.makedirs(DB_DIR, exist_ok=True)
         c = sqlite3.connect(DB_PATH)
         c.execute("CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, ts TEXT, kind TEXT, text TEXT)")
+        c.execute("CREATE TABLE IF NOT EXISTS team(id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT, name TEXT, idno TEXT, email TEXT, photo TEXT, sort INTEGER)")
         c.commit()
         c.close()
 
@@ -487,9 +601,9 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _body(self):
+    def _body(self, limit=100_000):
         n = int(self.headers.get("Content-Length") or 0)
-        if n > 100_000:
+        if n > limit:
             return {}
         try:
             return json.loads(self.rfile.read(n) or b"{}")
@@ -517,6 +631,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._file(os.path.join(STATIC, "index.html"), "text/html; charset=utf-8")
         if p == "/api/state":
             return self._json(HUB.snapshot())
+        if p == "/api/team":
+            return self._json({**team_list(), "editable": True, "limits": TEAM_LIMITS})
+        if p.startswith("/team-photo/"):
+            name = p.rsplit("/", 1)[-1]
+            if not re.fullmatch(r"\d+-\d+\.(jpg|png|webp)", name):
+                return self._json({"error": "not found"}, 404)
+            ctype = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}[name.rsplit(".", 1)[-1]]
+            return self._file(os.path.join(PHOTO_DIR, name), ctype)
         if p == "/api/stream":
             return self._stream()
         if p == "/api/history":
@@ -599,8 +721,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._local_only():
             return
-        p, d = urlparse(self.path).path, self._body()
+        p = urlparse(self.path).path
+        d = self._body(600_000 if p == "/api/team/save" else 100_000)  # a team photo is sent as a data: URL
         try:
+            if p in ("/api/team/save", "/api/team/delete"):
+                res, code = team_save(d) if p == "/api/team/save" else team_delete(d)
+                return self._json(res, code)
             if p == "/api/connect":
                 HUB.connect(d.get("mode", "serial"), d.get("port", ""), int(d.get("baud") or 115200),
                             d.get("scenario", "auto"), float(d.get("speed") or 1.0))
@@ -616,6 +742,20 @@ class Handler(BaseHTTPRequestHandler):
                         return self._json({"ok": True, "note": "already so"})
                 HUB.queue_tx(COMMANDS[cmd])
                 HUB.log("command", f"Sent: {cmd}")
+            elif p == "/api/io":  # Test IO page: drive one output by hand (firmware "!io ...")
+                if "led" in d:
+                    line = f"led={max(0, min(255, int(d['led'])))}"
+                elif "status" in d:
+                    line = f"status={1 if int(d['status']) else 0}"
+                elif d.get("laser"):
+                    line = "laser=1"
+                elif d.get("lcd"):
+                    line = "lcd=1"
+                elif d.get("off"):
+                    line = "off"
+                else:
+                    return self._json({"error": "unknown io request"}, 400)
+                HUB.queue_tx(f"!io {line}\n")
             elif p == "/api/settings":
                 if d.get("reset"):
                     HUB.queue_tx("!reset\n")

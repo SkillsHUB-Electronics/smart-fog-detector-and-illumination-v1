@@ -73,6 +73,7 @@ Semua pekerjaan di proyek ini, dari sesi mana pun, wajib:
 3. Menyebutkan di laporan akhir bahwa kedua aturan ini diikuti.
 
 ## Dashboard (PC) - catatan untuk sesi berikutnya
+- **Menu (2026-10-20)** meniru konsol `..\Arduino Car Distance Alarm\console`: Dashboard (Live + riwayat sensor), Test IO, Learning, Calibration, Serial Monitor (= halaman log), Settings, Guide, About, Author. Test IO memakai `!io ...` (firmware `handleIo()`, simulator hanya membalas, server `POST /api/io`). Author = tim yang bisa diedit seperti `..\Alarm System` (tabel `team` di `dashboard/data/fog_log.db`, foto di `dashboard/data/photos/`, keduanya git-ignored; `GET /api/team`, `POST /api/team/save|delete`).
 - `START_DASHBOARD.bat` -> `dashboard/server.py` (stdlib, port 5200, hanya localhost) + `dashboard/static/index.html`; `dashboard/simulator.py` = kembaran firmware.
   Gaya halaman meniru `..\Camel Pedestrian` (folder itu tidak boleh diubah dari sini).
 - Server memakai `tools/serial_port.py` dan membaca baris `H,`/`D,`/`S,`/`C,`/`#`. Hanya satu program per port COM (dashboard, `RECORD_DATA.bat`, Serial Monitor).

@@ -130,6 +130,45 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
 .err{color:var(--red);font-size:12.5px;margin-top:8px}
 .toast{position:fixed;right:20px;bottom:20px;background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;max-width:420px}
 .toast.on{opacity:1}
+nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100% - 12px)}
+@media(max-width:900px){nav hr{display:none}}
+/* author page */
+.teamhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 16px;min-height:38px}
+.teamhead h2{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.teamhead h2 .cnt{font-size:11.5px;font-weight:700;color:var(--tx-3);background:var(--bd-2);border-radius:999px;padding:3px 9px}
+.teamgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:1100px){.teamgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.teamgrid{grid-template-columns:1fr}}
+.person{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:26px 20px 20px;position:relative;background:var(--card);border:1px solid var(--bd);border-radius:var(--r)}
+.person .prole{position:absolute;top:14px;left:14px;font-size:10.5px;font-weight:700;letter-spacing:.4px;border-radius:999px;padding:3px 9px;background:var(--blue-soft);color:var(--blue)}
+.person .prole.sup{background:var(--green-soft);color:var(--green)}
+.person .pname{font-size:16px;font-weight:700;margin-top:10px}
+.person .pinfo{display:flex;flex-direction:column;gap:6px;width:100%;margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)}
+.person .prow{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+.person .prow span{color:var(--tx-3)}
+.person .prow b{font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person .prow a{color:var(--blue);text-decoration:none;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person .pacts{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:auto;padding-top:16px}
+.person .pacts .btn{height:36px}
+.person.empty{grid-column:1/-1;justify-content:center;color:var(--tx-3);font-size:13px;min-height:120px;background:transparent;border:1px dashed var(--bd)}
+.avatar{width:110px;height:110px;border-radius:50%;background:var(--bd-2) center/cover no-repeat;display:grid;place-items:center;font-size:34px;font-weight:700;color:var(--tx-3);border:3px solid var(--card)}
+#teamDlg{border:1px solid var(--bd);border-radius:var(--r);background:var(--card);color:var(--tx);padding:22px;width:min(420px,92vw)}
+#teamDlg::backdrop{background:rgba(5,10,20,.55)}
+#teamDlg h2{margin:0 0 14px;font-size:16px}
+#teamDlg .fl{display:block;font-size:12px;color:var(--tx-2);margin:10px 0 4px}
+#teamDlg input[type=text],#teamDlg input[type=email]{width:100%}
+.tphoto{display:flex;align-items:center;gap:16px}
+.tphotobtns{display:flex;flex-direction:column;gap:8px}
+.tdlgbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+/* test io, guide, about */
+.iogrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.iogrid button{padding:14px 0;border:1px solid var(--bd);border-radius:10px;background:var(--card);cursor:pointer;font-weight:600;color:var(--tx-2)}
+.iogrid button.on{background:#fde047;border-color:#eab308;color:#3b2f00}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.steps li{display:flex;gap:12px;align-items:flex-start}
+.steps .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:12.5px;font-weight:700}
+.steps b{display:block;font-size:13.5px}.steps span{color:var(--tx-2);font-size:12.5px;line-height:1.5}
+.tips{display:flex;flex-direction:column;gap:10px}
 </style>
 </head>
 <body>
@@ -138,12 +177,17 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
     <div class="brand"><div class="mark"><svg class="i" viewBox="0 0 24 24" style="width:21px;height:21px"><path d="M4 14h12M3 10h10M6 18h14M8 6h9"/></svg></div>
       <div><b>Fog Lane Light</b><span>Arduino Uno · USB serial</span></div></div>
     <nav id="nav">
-      <button class="on" data-p="live"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Live</button>
-      <button data-p="sensors"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 8-10"/><path d="M3 21h18"/></svg>Sensors</button>
-      <button data-p="calibration"><svg class="i" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Calibration</button>
+      <button class="on" data-p="live"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</button>
+      <button data-p="testio"><svg class="i" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>Test IO</button>
+      <hr>
       <button data-p="learning"><svg class="i" viewBox="0 0 24 24"><path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 1 5 3 3 0 0 0 4 3V3zM15 3a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-1 5 3 3 0 0 1-4 3V3z"/></svg>Learning</button>
-      <button data-p="settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Settings</button>
-      <button data-p="log"><svg class="i" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Log &amp; Record</button>
+      <button data-p="calibration"><svg class="i" viewBox="0 0 24 24"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>Calibration</button>
+      <button data-p="log"><svg class="i" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></svg>Serial Monitor</button>
+      <hr>
+      <button data-p="settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Settings</button>
+      <button data-p="guide"><svg class="i" viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></svg>Guide</button>
+      <button data-p="about"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>About</button>
+      <button data-p="author"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14c2.8 0 4.7 1.8 4.7 4.5"/></svg>Author</button>
     </nav>
     <div class="side-foot"><div class="sys off" id="sys"><div class="dot"></div><div><b id="sysT">Not connected</b><span id="sysS">Choose a port in Settings</span></div></div></div>
   </aside>
@@ -226,10 +270,6 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
         <div class="card p"><h2>AI probabilities &amp; attenuation <span class="sp"></span><span class="seg" id="winA"></span></h2>
           <canvas class="chart" id="chLive"></canvas><div class="legend" id="lgLive"></div></div>
       </div>
-    </section>
-
-    <!-- ============================ SENSORS ============================ -->
-    <section class="page" id="page-sensors">
       <div class="card p"><h2>History <span class="sp"></span><span class="seg" id="winB"></span></h2>
         <div class="grid g2">
           <div><b style="font-size:12.5px">Temperature &amp; dew-point spread (°C)</b><canvas class="chart" id="chT"></canvas><div class="legend" id="lgT"></div></div>
@@ -247,7 +287,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
             <tr><td>attenuation</td><td>clamp(1 − laser / baseline, −0.2, 1.2)</td><td class="num" id="f4">—</td></tr></table>
           <div class="note">The laser is switched ON and OFF for every reading; the difference cancels sunlight. Without calibration the attenuation feature is 0.</div></div>
         <div class="card p"><h2>Last raw rows <small>CSV "D," lines</small></h2>
-          <div style="overflow:auto;max-height:290px"><table id="raw"></table></div></div>
+          <div style="overflow:auto;max-height:290px"><table id="rawRows"></table></div></div>
       </div>
     </section>
 
@@ -368,6 +408,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
         <div style="overflow:auto"><table><tr><th>Direction</th><th>Text</th><th>Meaning</th></tr>
           <tr><td>PC → Uno</td><td><code>c d p i h</code></td><td>calibrate · demo on/off · next LCD page · info · help</td></tr>
           <tr><td>PC → Uno</td><td><code>!get</code> <code>!set key=value</code> <code>!reset</code></td><td>read / write / restore the settings above</td></tr>
+          <tr><td>PC → Uno</td><td><code>!io led=N</code> <code>!io status=0|1</code> <code>!io laser=1</code> <code>!io lcd=1</code> <code>!io off</code></td><td>Test IO: hold the LEDs (bit mask), status LED, pulse the laser, show an LCD test text, back to automatic (also after 30 s)</td></tr>
           <tr><td>Uno → PC</td><td><code>H,…</code> <code>D,…</code></td><td>CSV header and one sample per second (same as the recorder)</td></tr>
           <tr><td>Uno → PC</td><td><code>S,mode,calibrated,dhtFails,rxSat,light,pDay,pTwilight,pNight</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), health, light class (0 day, 1 twilight, 2 night) and its probabilities</td></tr>
           <tr><td>Uno → PC</td><td><code>R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn</code></td><td>raw sensor values before calibration, averaging and laser OFF/ON subtraction</td></tr>
@@ -375,7 +416,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
           <tr><td>Uno → PC</td><td><code># …</code></td><td>messages (state changes, calibration result, errors)</td></tr></table></div></div>
     </section>
 
-    <!-- ============================ LOG & RECORD ============================ -->
+    <!-- ============================ SERIAL MONITOR ============================ -->
     <section class="page" id="page-log">
       <div class="grid g2">
         <div class="card p"><h2>Events <span class="sp"></span><select id="evKind" class="sm"><option value="">all</option><option>state</option><option>fault</option><option>calibration</option><option>settings</option><option>command</option><option>record</option><option>link</option><option>driver</option></select> <a class="btn sm" href="/api/logs.csv">CSV</a></h2>
@@ -383,6 +424,83 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
         <div class="card p"><h2>Serial messages <small>lines starting with #</small></h2><pre class="console" id="console"></pre></div>
       </div>
     </section>
+    <!-- ============================ TEST IO ============================ -->
+    <section class="page" id="page-testio">
+      <div class="card p"><h2>Test IO <small>drive the outputs by hand; the board returns to automatic after 30 s without a command</small>
+          <span class="sp"></span><button class="btn sm" id="ioOff">Back to automatic</button></h2>
+        <div class="bn info" id="ioNote">Connect to the board (or the simulator) first.</div></div>
+      <div class="grid g2">
+        <div class="card p"><h2>Guide lights <small>74HC595 · LED1 = Q0</small></h2>
+          <div class="iogrid" id="ioLeds"></div>
+          <div class="ctl" style="margin-top:12px"><button class="btn sm" id="ioAll">All on</button><button class="btn sm" id="ioNone">All off</button><button class="btn sm" id="ioSweep">Sweep once</button></div></div>
+        <div class="card p"><h2>Status LED &amp; LCD</h2>
+          <div class="ctl"><button class="btn" id="ioStOn">Status LED on</button><button class="btn" id="ioStOff">Status LED off</button></div>
+          <div class="ctl" style="margin-top:10px"><button class="btn" id="ioLcd">Show LCD test text</button><button class="btn" id="ioPage">Next LCD page</button></div>
+          <div class="note">The LCD test shows <code>LCD TEST OK</code> for 3 s. A blank screen: try I2C address 0x3F in config.h and check the contrast trimmer.</div></div>
+        <div class="card p"><h2>Laser &amp; receiver</h2>
+          <div class="ctl"><button class="btn" id="ioLaser">Pulse laser 1.5 s</button></div>
+          <div class="rows" id="ioRx" style="margin-top:10px"></div>
+          <div class="note">One phototransistor (A1) is read with the laser OFF and ON; the difference is the laser signal. Below 40 counts calibration is refused: align the laser with the receiver.</div></div>
+        <div class="card p"><h2>Sensors <small>unfiltered, live</small></h2><div class="rows" id="ioSens"></div></div>
+      </div>
+    </section>
+
+    <!-- ============================ GUIDE ============================ -->
+    <section class="page" id="page-guide">
+      <div class="card p"><h2>Quick start</h2>
+        <ol class="steps">
+          <li><span class="n">1</span><div><b>Connect</b><span>Plug in the Uno, open <i>Settings</i> and choose its COM port (or use the simulator). Close the Arduino Serial Monitor and RECORD_DATA.bat first: only one program can hold a port.</span></div></li>
+          <li><span class="n">2</span><div><b>Test outputs</b><span>In <i>Test IO</i> light each LED, the status LED and the LCD, and pulse the laser. The laser signal (ON − OFF) must be well above 40 counts.</span></div></li>
+          <li><span class="n">3</span><div><b>Calibrate</b><span>In clear, dry air press <i>Calibrate laser</i> (or hold the CAL button 2 s). Use the Calibration page to linearise the LDR and DHT11.</span></div></li>
+          <li><span class="n">4</span><div><b>Teach the AI</b><span>In <i>Learning</i> record every scenario with its true fog label and light, train, then install the model and upload the firmware.</span></div></li>
+          <li><span class="n">5</span><div><b>Watch</b><span>The Dashboard shows the decision, the guide lights, the sensors and the combined light + fog condition. Faults make every LED blink (fail-safe).</span></div></li></ol></div>
+      <div class="card p"><h2>Troubleshooting</h2>
+        <div class="tips">
+          <div class="bn warn"><b>Cannot connect.</b> Close other programs using the port, replug the cable, and check the USB-serial driver card in Settings.</div>
+          <div class="bn warn"><b>DHT11 reads nan / FAULT.</b> Check the data wire on D2 and its pull-up; a failing DHT11 in fog is handled by the laser.</div>
+          <div class="bn warn"><b>Laser signal almost zero.</b> The laser does not reach the phototransistor: align it, check the transistor on A2, shade the receiver from sunlight.</div>
+          <div class="bn warn"><b>LCD blank.</b> Try I2C address 0x3F, adjust the contrast trimmer. The firmware re-initialises the LCD by itself when it answers again.</div></div></div>
+    </section>
+
+    <!-- ============================ ABOUT ============================ -->
+    <section class="page" id="page-about">
+      <div class="card p"><h2>Fog-Resilient Smart Road Lane Illumination</h2>
+        <div class="note" style="margin-top:0;font-size:13px;color:var(--tx-2)">An Arduino Uno measures fog with a DHT11, an LDR and a laser + phototransistor pair. A small edge-AI model classifies the air as clear, light fog or dense fog, a second one tells day, twilight or night, and eight guide lights chase along the lane at a speed that depends on the fog. If a sensor fails the lights fall back to a fail-safe so the road is never left dark.</div>
+        <div class="rows" style="margin-top:12px">
+          <div class="row"><span class="k">Firmware</span><span class="v" id="abFw">—</span></div>
+          <div class="row"><span class="k">Board</span><span class="v">Arduino Uno · 74HC595 · 16×2 I2C LCD</span></div>
+          <div class="row"><span class="k">Sensors</span><span class="v">DHT11 · LDR · laser + phototransistor</span></div>
+          <div class="row"><span class="k">Models</span><span class="v">softmax logistic regression (fog 5 features, light 1 feature)</span></div>
+          <div class="row"><span class="k">Source</span><span class="v"><a href="https://github.com/SkillsHUB-Electronics/smart-fog-detector-and-illumination-v1" target="_blank" rel="noopener">GitHub repository ↗</a></span></div></div></div>
+    </section>
+
+    <!-- ============================ AUTHOR ============================ -->
+    <section class="page" id="page-author">
+      <div class="card p"><h2>Project team <small id="teamSub">Authors and supervisors</small></h2></div>
+      <div class="card p">
+        <div class="teamhead"><h2>Authors <span class="cnt" id="cntA">0/3</span></h2>
+          <button class="btn sm" id="addAuthor" type="button">+ Add Author</button></div>
+        <div class="teamgrid" id="teamAuthors"></div></div>
+      <div class="card p">
+        <div class="teamhead"><h2>Supervisors <span class="cnt" id="cntS">0/2</span></h2>
+          <button class="btn sm" id="addSup" type="button">+ Add Supervisor</button></div>
+        <div class="teamgrid" id="teamSups"></div></div>
+      <dialog id="teamDlg">
+        <form id="teamForm" method="dialog">
+          <h2 id="teamDlgTitle">Add Author</h2>
+          <div class="tphoto">
+            <div class="avatar" id="tPrev"></div>
+            <div class="tphotobtns">
+              <label class="btn sm" for="tFile">Upload photo</label>
+              <input type="file" id="tFile" accept="image/jpeg,image/png,image/webp" hidden>
+              <button class="btn sm" id="tNoPhoto" type="button">Remove photo</button></div></div>
+          <label class="fl">Name</label><input type="text" name="name" maxlength="60" required>
+          <label class="fl">ID number</label><input type="text" name="idno" maxlength="30">
+          <label class="fl">Email</label><input type="email" name="email" maxlength="80">
+          <div class="tdlgbtns"><button class="btn sm" id="tCancel" type="button">Cancel</button><button class="btn primary sm" type="submit">Save</button></div>
+        </form></dialog>
+    </section>
+
   </main>
 </div>
 <div class="toast" id="toast"></div>
@@ -527,6 +645,8 @@ function banners() {
   return out;
 }
 function render() {
+  ioRender();
+  if (S && S.link) $("abFw").textContent = S.link.fw || "—";
   if (!S) return;
   const L = S.link, sm = S.sample, st = S.status, c = S.cfg;
   const pl = $("pLink"); pl.className = "pill " + (L.mode ? (L.dataAge != null && L.dataAge > 5 ? "bad" : "") : "off");
@@ -734,9 +854,8 @@ async function loadConsole() {
 }
 $("evKind").onchange = () => { logSeq = -1; loadLogs(); };
 function renderRaw() {
-  if (!$("page-sensors").classList.contains("on")) return;
   const rows = H.slice(-12).reverse();
-  $("raw").innerHTML = '<tr><th>Time</th><th>T</th><th>RH</th><th>Spread</th><th>Laser</th><th>Att</th><th>AI</th><th>Mode</th></tr>' + rows.map(p =>
+  $("rawRows").innerHTML = '<tr><th>Time</th><th>T</th><th>RH</th><th>Spread</th><th>Laser</th><th>Att</th><th>AI</th><th>Mode</th></tr>' + rows.map(p =>
     `<tr><td class="num">${new Date(p.t * 1000).toLocaleTimeString()}</td><td class="num">${num(p.temp)}</td><td class="num">${num(p.hum, 0)}</td><td class="num">${num(p.spread)}</td><td class="num">${num(p.sig, 0)}</td><td class="num">${num(p.att, 2)}</td><td>${STATES[p.p.indexOf(Math.max(...p.p))] || ""}</td><td>${STATES[p.mode] || ""}</td></tr>`).join("");
 }
 
@@ -1025,7 +1144,128 @@ document.querySelectorAll("#nav button").forEach(b => b.addEventListener("click"
   if (p === "calibration") loadCalibration(false);
   if (p === "learning") { loadLearning(); loadFiles(); }
   if (p === "settings") loadPins();
+  if (p === "author") loadTeam();
 }));
+
+
+/* ---------------------------------------------------------------- test io */
+let ioMask = 0;
+function ioSend(body) { return act("/api/io", body).catch(() => {}); }
+function ioDraw() {
+  $("ioLeds").innerHTML = [...Array(8).keys()].map(i => `<button data-i="${i}" class="${ioMask >> i & 1 ? "on" : ""}">${i + 1}</button>`).join("");
+  $("ioLeds").querySelectorAll("button").forEach(b => b.onclick = () => { ioMask ^= 1 << +b.dataset.i; ioDraw(); ioSend({ led: ioMask }); });
+}
+function ioRender() {
+  const on = !!(S && S.link.mode);
+  document.querySelectorAll("#page-testio button").forEach(b => b.disabled = !on);
+  $("ioNote").className = "bn " + (on ? "ok" : "info");
+  $("ioNote").textContent = on ? (S.link.mode === "sim" ? "Simulator connected: it has no LEDs and only answers the commands." : "Connected: the buttons drive the real outputs.") : "Connect to the board (or the simulator) first.";
+  const rw = S && S.raw, d = rw ? rw.rxOn - rw.rxOff : null, tag = (t, c) => `<span class="tag ${c}">${t}</span>`;
+  $("ioRx").innerHTML = rw ? [["Receiver A1, laser OFF", rw.rxOff], ["Receiver A1, laser ON", rw.rxOn], ["ON − OFF", d + " " + (d < 40 ? tag("too weak: align the laser", "bad") : tag("OK", "ok"))]]
+    .map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No raw line yet.</div>';
+  $("ioSens").innerHTML = rw ? [["DHT11 temperature", rw.temp == null ? tag("no answer", "bad") : rw.temp.toFixed(1) + " °C"], ["DHT11 humidity", rw.hum == null ? tag("no answer", "bad") : rw.hum.toFixed(1) + " %"], ["LDR (ADC)", rw.ldr]]
+    .map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No raw line yet.</div>';
+}
+$("ioAll").onclick = () => { ioMask = 255; ioDraw(); ioSend({ led: 255 }); };
+$("ioNone").onclick = () => { ioMask = 0; ioDraw(); ioSend({ led: 0 }); };
+$("ioSweep").onclick = async () => { for (let i = 0; i < 8; i++) { ioMask = 1 << i; ioDraw(); await ioSend({ led: ioMask }); await new Promise(r => setTimeout(r, 250)); } ioMask = 0; ioDraw(); ioSend({ led: 0 }); };
+$("ioStOn").onclick = () => ioSend({ status: 1 }); $("ioStOff").onclick = () => ioSend({ status: 0 });
+$("ioLcd").onclick = () => ioSend({ lcd: 1 }); $("ioPage").onclick = () => act("/api/command", { cmd: "page" }).catch(() => {});
+$("ioLaser").onclick = () => ioSend({ laser: 1 });
+$("ioOff").onclick = () => { ioMask = 0; ioDraw(); ioSend({ off: 1 }); };
+ioDraw();
+
+/* ---------------------------------------------------------------- author (project team, editable) */
+let team = { authors: [], supervisors: [], editable: false, limits: {} }, tEdit = null, tPhoto = null;
+const initials = n => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+async function loadTeam() {
+  try { team = await (await fetch("/api/team", { cache: "no-store" })).json(); } catch { return; }
+  drawTeam();
+}
+function personCard(p, role, i) {
+  const photo = p.photoUrl ? ` style="background-image:url('${esc(p.photoUrl)}')"` : "";
+  const tag = role === "author" ? `Author ${i + 1}` : `Supervisor ${i + 1}`;
+  return `<div class="person">
+    <span class="prole${role === "author" ? "" : " sup"}">${tag}</span>
+    <div class="avatar"${photo}>${p.photoUrl ? "" : esc(initials(p.name))}</div>
+    <div class="pname">${esc(p.name)}</div>
+    <div class="pinfo">
+      <div class="prow"><span>ID Number</span><b>${esc(p.idno || "–")}</b></div>
+      <div class="prow"><span>Email</span>${p.email ? `<a href="mailto:${esc(p.email)}" title="${esc(p.email)}">${esc(p.email)}</a>` : "<b>–</b>"}</div>
+    </div>
+    ${team.editable ? `<div class="pacts">
+      <button class="btn sm" data-tedit="${p.id}" type="button">Edit</button>
+      <button class="btn sm" data-tdel="${p.id}" type="button" style="color:var(--red)">Delete</button>
+    </div>` : ""}</div>`;
+}
+function drawTeam() {
+  const L = team.limits || {}, maxA = (L.author || [0, 3])[1], maxS = (L.supervisor || [0, 2])[1];
+  $("cntA").textContent = team.authors.length >= maxA ? `${maxA}/${maxA} · Full` : `${team.authors.length}/${maxA}`;
+  $("cntS").textContent = team.supervisors.length >= maxS ? `${maxS}/${maxS} · Full` : `${team.supervisors.length}/${maxS}`;
+  const nA = team.authors.length, nS = team.supervisors.length;
+  $("teamSub").textContent = `${nA} author${nA === 1 ? "" : "s"} · ${nS} supervisor${nS === 1 ? "" : "s"}`;
+  $("teamAuthors").innerHTML = team.authors.map((p, i) => personCard(p, "author", i)).join("") || `<div class="person empty">No author yet</div>`;
+  $("teamSups").innerHTML = team.supervisors.map((p, i) => personCard(p, "supervisor", i)).join("") || `<div class="person empty">No supervisor yet</div>`;
+  $("addAuthor").style.display = team.editable && team.authors.length < maxA ? "" : "none";
+  $("addSup").style.display = team.editable && team.supervisors.length < maxS ? "" : "none";
+  document.querySelectorAll("[data-tedit]").forEach(b => b.onclick = () => openPerson([...team.authors, ...team.supervisors].find(p => p.id === +b.dataset.tedit)));
+  document.querySelectorAll("[data-tdel]").forEach(b => b.onclick = () => deletePerson(+b.dataset.tdel));
+}
+function paintPreview(url, name) {
+  const e = $("tPrev");
+  e.style.backgroundImage = url ? `url('${url}')` : "";
+  e.textContent = url ? "" : initials(name);
+}
+function openPerson(p, role) {
+  tEdit = p ? { id: p.id, role: p.role } : { id: null, role };
+  tPhoto = null;
+  const f = $("teamForm"), r = tEdit.role === "author" ? "Author" : "Supervisor";
+  $("teamDlgTitle").textContent = (p ? "Edit " : "Add ") + r;
+  f.name.value = p?.name || ""; f.idno.value = p?.idno || ""; f.email.value = p?.email || "";
+  paintPreview(p?.photoUrl || "", p?.name || "");
+  $("tNoPhoto").style.display = p?.photoUrl ? "" : "none";
+  $("teamDlg").showModal();
+}
+// Photos are cropped to a centred square and scaled to 400 px before upload, so a phone photo of several MB becomes ~40 KB.
+$("tFile").onchange = () => {
+  const file = $("tFile").files[0];
+  $("tFile").value = "";
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const s = Math.min(img.width, img.height), c = document.createElement("canvas");
+    c.width = c.height = Math.min(400, s);
+    c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, c.width, c.height);
+    tPhoto = c.toDataURL("image/jpeg", 0.88);
+    URL.revokeObjectURL(img.src);
+    paintPreview(tPhoto);
+    $("tNoPhoto").style.display = "";
+  };
+  img.onerror = () => toast("Not an image: choose a JPEG, PNG or WebP photo.");
+  img.src = URL.createObjectURL(file);
+};
+$("tNoPhoto").onclick = () => { tPhoto = "remove"; paintPreview("", $("teamForm").name.value); $("tNoPhoto").style.display = "none"; };
+$("tCancel").onclick = () => $("teamDlg").close();
+$("teamForm").onsubmit = async ev => {
+  ev.preventDefault();
+  const f = $("teamForm");
+  const body = { id: tEdit.id, role: tEdit.role, name: f.name.value, idno: f.idno.value, email: f.email.value };
+  if (tPhoto === "remove") body.removePhoto = true; else if (tPhoto) body.photo = tPhoto;
+  try {
+    team = { ...team, ...(await api("/api/team/save", body)) };
+    $("teamDlg").close();
+    drawTeam();
+    toast("Saved: " + body.name);
+  } catch (e) { toast("Could not save: " + e.message); }
+};
+async function deletePerson(id) {
+  const p = [...team.authors, ...team.supervisors].find(x => x.id === id);
+  if (!p || !confirm(`Delete ${p.name} and their photo?`)) return;
+  try { team = { ...team, ...(await api("/api/team/delete", { id })) }; drawTeam(); toast("Deleted: " + p.name); }
+  catch (e) { toast("Could not delete: " + e.message); }
+}
+$("addAuthor").onclick = () => openPerson(null, "author");
+$("addSup").onclick = () => openPerson(null, "supervisor");
 
 /* ---------------------------------------------------------------- data feed */
 function addHistory(s) {
