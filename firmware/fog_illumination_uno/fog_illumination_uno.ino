@@ -5,7 +5,7 @@
 //            light), laser + phototransistor (fog attenuation, laser ON/OFF
 //            differential measurement so sunlight does not matter)
 //  Brain   : edge AI (softmax logistic regression, 3 classes) + fail-safe rules
-//  Output  : chasing guiding lights through a 74HC595 (OE PWM = brightness),
+//  Output  : chasing guiding lights through a 74HC595 (LEDs on/off, no PWM),
 //            LCD 16x2 (I2C), status LED, CSV telemetry over USB
 //
 //  Libraries: EEPROM (built in) and LiquidCrystal_I2C (Library Manager).

@@ -233,7 +233,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
           <div><b style="font-size:12.5px">Temperature &amp; dew-point spread (°C)</b><canvas class="chart" id="chT"></canvas><div class="legend" id="lgT"></div></div>
           <div><b style="font-size:12.5px">Relative humidity (%)</b><canvas class="chart" id="chH"></canvas><div class="legend" id="lgH"></div></div>
           <div><b style="font-size:12.5px">Laser signal vs clear-air baseline (counts)</b><canvas class="chart" id="chL"></canvas><div class="legend" id="lgL"></div></div>
-          <div><b style="font-size:12.5px">Ambient light &amp; lamp brightness (%)</b><canvas class="chart" id="chB"></canvas><div class="legend" id="lgB"></div></div>
+          <div><b style="font-size:12.5px">Ambient light &amp; nominal lamp brightness (%)</b><canvas class="chart" id="chB"></canvas><div class="legend" id="lgB"></div></div>
         </div></div>
       <div class="grid g2">
         <div class="card p"><h2>How the five features are made</h2>
@@ -390,7 +390,7 @@ const $ = id => document.getElementById(id);
 const STATES = ["CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"];
 const FEATS = [["temp", -2, 3], ["humidity", -3.5, 1.5], ["dew_spread", 0, 4], ["light", 0, 1], ["attenuation", -0.2, 1.2]];
 const SET_INFO = {
-  brightLight: ["Brightness, light fog", "0–255, PWM on the 74HC595 OE pin"],
+  brightLight: ["Brightness, light fog", "0–255, nominal: reported only, the LEDs are not dimmed (no PWM line)"],
   brightDense: ["Brightness, dense fog", "0–255"],
   nightPct: ["Night threshold", "% ambient light below which it counts as night"],
   nightScale: ["Night brightness", "% of the brightness used at night (less glare in fog)"],
@@ -508,7 +508,7 @@ function updateScene() {
   const m = st ? st.mode : null;
   scn.mode.textContent = m == null ? "" : `Lights: ${STATES[m]}${S.sample && S.sample.demo ? " (demo)" : ""}`;
   scn.mode.setAttribute("fill", night ? "#e2e8f0" : "#17233a");
-  scn.mode2.textContent = m == null ? "" : `brightness ${(st.bright / 255 * 100).toFixed(0)} %`;
+  scn.mode2.textContent = m == null ? "" : `nominal brightness ${(st.bright / 255 * 100).toFixed(0)} %`;
   scn.mode2.setAttribute("fill", night ? "#cbd5e1" : "#475569");
 }
 
@@ -581,7 +581,7 @@ function render() {
     rows.push(["Receiver", st && st.rxSat ? tag("saturated", "warn") : tag("OK", "ok")]);
     rows.push(["Calibration", st && !st.calibrated ? tag("not calibrated", "warn") : tag("baseline " + num(sm.baseline, 0), "ok")]);
     rows.push(["Lights", mode == null ? "—" : tag(STATES[mode] + (sm.demo ? " · demo" : ""), mode === 3 ? "bad" : mode === 0 ? "ok" : "info")]);
-    rows.push(["Brightness", st ? `${(st.bright / 255 * 100).toFixed(0)} % (${st.bright}/255)` : "—"]);
+    rows.push(["Nominal brightness", st ? `${(st.bright / 255 * 100).toFixed(0)} % (${st.bright}/255)` : "—"]);
   }
   $("health").innerHTML = rows.length ? rows.map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No data yet.</div>';
 
@@ -769,7 +769,7 @@ const CH = [
   ["chT", [{ n: "temperature", color: "red", get: p => p.temp }, { n: "dew-point spread", color: "cyan", get: p => p.spread }], {}, "lgT"],
   ["chH", [{ n: "humidity", color: "blue", get: p => p.hum }], { min: 0, max: 100 }, "lgH"],
   ["chL", [{ n: "laser signal", color: "purple", get: p => p.sig }, { n: "baseline", color: "tx", dash: [5, 4], get: p => (S && S.sample && S.sample.baseline) || null }], {}, "lgL"],
-  ["chB", [{ n: "ambient light", color: "amber", get: p => p.light == null ? null : p.light * 100 }, { n: "lamp brightness", color: "green", get: p => p.bright / 255 * 100 }], { min: 0, max: 100 }, "lgB"],
+  ["chB", [{ n: "ambient light", color: "amber", get: p => p.light == null ? null : p.light * 100 }, { n: "nominal brightness", color: "green", get: p => p.bright / 255 * 100 }], { min: 0, max: 100 }, "lgB"],
 ];
 function drawCharts() {
   CH.forEach(([id, series, o, lg]) => {
