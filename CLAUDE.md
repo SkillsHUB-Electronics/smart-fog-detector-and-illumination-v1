@@ -81,6 +81,7 @@ Semua pekerjaan di proyek ini, dari sesi mana pun, wajib:
 - Protokol tambahan (firmware): `!get`, `!set key=nilai`, `!reset` (pengaturan di EEPROM alamat 16, `Cfg`), baris status `S,mode,bright,calibrated,dhtFails,rxSat`,
   baris `C,...`. Kolom `D,` tidak diubah (recorder dan `train_model.py` bergantung padanya). Batas nilai: `CFG_LIMITS` di simulator = `setCfg()` di firmware.
 - Rekaman simulator disimpan sebagai `data/sim_*.csv` agar tidak ikut training (`train_*.csv`).
+- **LCD I2C (2026-10-20):** LCD kini lewat backpack I2C (SDA=A4, SCL=A5, `LCD_I2C_ADDR` 0x27, library `LiquidCrystal I2C`); **Revisi 2026-10-20:** 74HC595 tanpa pin OE/PWM (OE ke GND; kecerahan tidak lagi diterapkan ke LED, nilai `bright` tetap dilaporkan di telemetri), SH_CP/ST_CP/DS = D13/D12/D11 lewat `shiftOut` (bukan SPI), tombol CAL=D3, PAGE=D4, status LED=D5 (A3 bebas). Dikompilasi OK (19492 B / 60 %, RAM 1452 B / 70 %). Cadangan `backups/pre_nopwm/`. Cadangan di `backups/pre_i2c/`.
 - Firmware belum bisa dikompilasi di PC ini (tidak ada arduino-cli/g++); verifikasi dengan Arduino IDE. Simulator diuji, perilaku di Uno belum.
 - **Driver USB-serial** (`dashboard/drivers.py`, kartu di Settings, `GET /api/drivers`, `POST /api/drivers/rescan|install`): deteksi lewat `Win32_PnPEntity`
   (VID 1A86 CH340, 10C4 CP210x, 0403 FTDI, 2341/2A03 Arduino; kode 28 = driver belum ada). `pnputil /scan-devices` dan instalasi butuh admin: selalu lewat UAC dan

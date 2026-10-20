@@ -28,17 +28,18 @@ DENSE FOG** dengan **edge AI** (softmax logistic regression), lalu menjalankan p
 | Pin | Ke | Pin | Ke |
 |---|---|---|---|
 | D2 | DHT11 DATA | A0 | LDR (pembagi 10 kΩ) |
-| D3–D8 | LCD RS, E, D4, D5, D6, D7 | A1 | Phototransistor (emitter + 10 kΩ ke GND) |
-| D9 | 595 OE (pin 13) — PWM kecerahan | A2 | Laser lewat NPN 2N2222 |
-| D10 | 595 ST_CP (pin 12) | A3 | Tombol CAL → GND |
-| D11 | 595 DS (pin 14) | A4 | Tombol PAGE → GND |
-| D13 | 595 SH_CP (pin 11) | A5 | Status LED + 330 Ω |
+| D3 | Tombol CAL → GND | A1 | Phototransistor (emitter + 10 kΩ ke GND) |
+| D4 | Tombol PAGE → GND | A2 | Laser lewat NPN 2N2222 |
+| D5 | Status LED + 330 Ω | A4 | LCD I2C SDA |
+| D11 | 595 DS (pin 14) | A5 | LCD I2C SCL |
+| D12 | 595 ST_CP (pin 12) | | |
+| D13 | 595 SH_CP (pin 11) | | |
 
 Catatan:
-- 595: VCC(16) & MR(10) ke 5V, GND(8) ke GND, kapasitor 0,1 µF dekat VCC, resistor **10 kΩ dari OE ke 5V**
-  (supaya LED mati saat Arduino baru menyala). LED1…LED8 di Q0…Q7, tiap LED **470 Ω – 1 kΩ** ke GND.
-- LCD: RW(5) ke GND, V0(3) ke kaki tengah potensiometer 10 kΩ, backlight A(15) lewat 220 Ω ke 5V.
-  **Layar kosong / kotak hitam = putar potensiometer kontras.**
+- 595: VCC(16) & MR(10) ke 5V, GND(8) ke GND, kapasitor 0,1 µF dekat VCC, **OE (pin 13) langsung ke GND**
+  (tanpa PWM: LED hanya menyala penuh atau mati, kecerahan tidak diatur). LED1…LED8 di Q0…Q7, tiap LED **470 Ω – 1 kΩ** ke GND.
+- LCD I2C (backpack PCF8574): VCC ke 5V, GND, SDA ke A4, SCL ke A5. Alamat default `0x27` (`LCD_I2C_ADDR` di `config.h`; ganti ke `0x3F` bila layar kosong).
+  **Layar kosong / kotak hitam = putar trimmer kontras di backpack.**
 - Laser 2 kabel: + ke 5V, − ke collector 2N2222, emitter ke GND, basis lewat 1 kΩ ke A2.
   Modul KY-008 (3 pin): pin S tetap lewat transistor, jangan langsung dari pin Arduino bila arusnya > 20 mA.
 - Phototransistor dimasukkan ke **tabung hitam** (sedotan hitam / selongsong) dan diarahkan tepat ke laser,
@@ -47,7 +48,7 @@ Catatan:
 ## 2. Upload firmware
 1. Buka `firmware/fog_illumination_uno/fog_illumination_uno.ino` di Arduino IDE.
 2. Board: **Arduino Uno**, pilih port COM-nya, klik Upload.
-   Tidak perlu install library (SPI, EEPROM, LiquidCrystal sudah bawaan; DHT11 dibaca dengan kode sendiri).
+   Install library **LiquidCrystal I2C** (Library Manager); SPI, EEPROM, Wire bawaan; DHT11 dibaca dengan kode sendiri.
 3. Saat menyala: LCD menampilkan versi, 8 LED menyala bergantian satu kali (lamp test).
 
 ## 3. Kalibrasi laser (wajib sekali, tersimpan di EEPROM)
@@ -179,11 +180,11 @@ tombol "Next LCD page" tidak berpengaruh di simulator (tidak ada LCD).
 ## Troubleshooting
 | Gejala | Penyebab / solusi |
 |---|---|
-| LCD kotak hitam / kosong | Putar potensiometer kontras; cek RW ke GND |
+| LCD kotak hitam / kosong | Putar trimmer kontras di backpack I2C; cek alamat (0x27 atau 0x3F) dan SDA/SCL |
 | `!! SENSOR FAULT DHT11` | Kabel data DHT11 ke D2, pull-up 10 kΩ (sensor tanpa modul). Muncul hanya bila belum terkalibrasi; bila sudah terkalibrasi, DHT11 gagal hanya membuat LED status berkedip cepat |
 | `!! SENSOR FAULT LASER` | Laser terhalang/bergeser → luruskan, kalibrasi ulang |
 | `NOT CALIBRATED` bergantian di LCD | Belum kalibrasi → tahan CAL 2 s di udara bersih. Selama itu lampu menyala minimal LIGHT FOG |
-| LED tidak menyala sama sekali | Cek OE (D9), MR ke 5V, latch D10; coba demo mode |
+| LED tidak menyala sama sekali | Cek OE (pin 13) ke GND, MR ke 5V, latch D12; coba demo mode |
 | Recorder: "port is busy" | Tutup Serial Monitor / Serial Plotter Arduino IDE |
 | Dashboard: "Cannot open COMx ... port is busy" | Tutup Serial Monitor, `RECORD_DATA.bat`, atau dashboard lain yang memakai port itu |
 | Dashboard: tidak ada port COM / "driver missing" | Settings → USB-serial driver (bagian 7): Scan for hardware changes, atau pasang driver CH340/CP210x/FTDI dari situs vendor |

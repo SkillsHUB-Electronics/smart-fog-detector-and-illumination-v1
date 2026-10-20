@@ -248,7 +248,7 @@ s.append('<defs>'
          '</defs>')
 s.append(f'<rect width="{W}" height="{H}" fill="#ffffff"/>')
 t(60, 62, "Fog-Resilient Smart Road Lane Illumination — Wiring Diagram", 26, "start", True)
-t(60, 90, "Arduino UNO · DHT11 · LDR · laser + phototransistor · 74HC595 with 8 guiding LEDs · LCD 16×2 (4-bit) · 2 buttons · status LED",
+t(60, 90, "Arduino UNO · DHT11 · LDR · laser + phototransistor · 74HC595 with 8 guiding LEDs · LCD 16×2 (I2C) · 2 buttons · status LED",
   13, "start", False, SUB)
 
 # ================================================================ Uno symbol
@@ -259,22 +259,22 @@ box(BX0 + 60, 560, 180, 116, "#374151", "#4b5563", 6, 1.4)
 t((BX0 + BX1) / 2, 606, "ATmega328P", 13, "middle", True, "#e5e7eb")
 t((BX0 + BX1) / 2, 628, "16 MHz · 5 V", 11, "middle", False, "#9ca3af")
 t((BX0 + BX1) / 2, 656, "D0/D1 = USB serial (free)", 10, "middle", False, "#9ca3af")
-t((BX0 + BX1) / 2, 700, "D12 = free (SPI MISO)", 10, "middle", False, "#9ca3af")
+t((BX0 + BX1) / 2, 700, "D6–D10, A3 = free", 10, "middle", False, "#9ca3af")
 
 P_D2, P_A0, P_A1, P_A2 = (BX0, 240), (BX0, 480), (BX0, 720), (BX0, 1010)
 for p, name in ((P_D2, "D2"), (P_A0, "A0"), (P_A1, "A1"), (P_A2, "A2")):
     sym_pin(p, name, "left")
-P_D13, P_D11, P_D10, P_D9 = [(BX1, y) for y in (220, 304, 388, 472)]
-P_D8, P_D7, P_D6, P_D5, P_D4, P_D3 = [(BX1, y) for y in (556, 640, 724, 808, 892, 976)]
-P_A5 = (BX1, 1060)
-for p, name in ((P_D13, "D13"), (P_D11, "D11"), (P_D10, "D10"), (P_D9, "D9~"), (P_D8, "D8"), (P_D7, "D7"),
-                (P_D6, "D6"), (P_D5, "D5"), (P_D4, "D4"), (P_D3, "D3"), (P_A5, "A5")):
+P_D13, P_D12, P_D11 = [(BX1, y) for y in (220, 304, 388)]
+P_A4, P_A5 = (BX1, 556), (BX1, 640)   # I2C: SDA = A4, SCL = A5
+P_D5 = (BX1, 1060)                     # status LED = D5
+for p, name in ((P_D13, "D13"), (P_D12, "D12"), (P_D11, "D11"), (P_A4, "A4 SDA"), (P_A5, "A5 SCL"),
+                (P_D5, "D5")):
     sym_pin(p, name, "right")
 P_5V = (900, BY0)
 sym_pin(P_5V, "5V", "top")
 v5_at(P_5V, 40)
-P_A3, P_A4, P_GNDB = (760, BY1), (880, BY1), (960, BY1)
-for p, name in ((P_A3, "A3"), (P_A4, "A4"), (P_GNDB, "GND")):
+P_CAL, P_PAGE, P_GNDB = (760, BY1), (880, BY1), (960, BY1)
+for p, name in ((P_CAL, "D3"), (P_PAGE, "D4"), (P_GNDB, "GND")):
     sym_pin(p, name, "bottom")
 
 # ================================================================ DHT11 → D2
@@ -335,7 +335,7 @@ t(468, 854, "ready-made module: series resistor is built in", 10, "start", False
 t(468, 870, "bare diode: add ≈ 100 Ω in series", 10, "start", False, GREY)
 
 # ================================================================ Buttons + board ground
-for p in (P_A3, P_A4):
+for p in (P_CAL, P_PAGE):
     wire([p, (p[0], 1150)], C_BTN)
     switch_between((p[0], 1150), (p[0], 1230))
     gnd_at((p[0], 1230))
@@ -347,8 +347,8 @@ t(800, 1342, "both wired to ground with INPUT_PULLUP — no external resistor", 
 wire([P_GNDB, (960, 1170)])
 gnd_at((960, 1170))
 
-# ================================================================ Status LED → A5
-wire([P_A5, (1050, 1060), (1050, 1330)], C_STAT)
+# ================================================================ Status LED → D5
+wire([P_D5, (1050, 1060), (1050, 1330)], C_STAT)
 res_between((1050, 1330), (1170, 1330), "330 Ω")
 led_between((1170, 1330), (1250, 1330), "#f59e0b")
 wire([(1250, 1330), (1290, 1330)])
@@ -363,12 +363,16 @@ s.append(f'<path d="M{(CX0 + CX1) / 2 - 12},{CY0} a12,12 0 0,0 24,0" fill="#ffff
 t((CX0 + CX1) / 2, CY1 + 28, "U1 · 74HC595", 13, "middle", True)
 t((CX0 + CX1) / 2, CY1 + 46, "grey numbers = chip pins", 10, "middle", False, GREY)
 
-for p_mcu, cy, name, num, netlabel in ((P_D13, 220, "SH_CP", "11", "CLOCK"), (P_D11, 304, "DS", "14", "DATA"),
-                                       (P_D10, 388, "ST_CP", "12", "LATCH"), (P_D9, 472, "OE", "13", "PWM")):
+for p_mcu, cy, name, num, netlabel in ((P_D13, 220, "SH_CP", "11", "CLOCK"), (P_D12, 304, "ST_CP", "12", "LATCH"),
+                                       (P_D11, 388, "DS", "14", "DATA")):
     sym_pin((CX0, cy), name, "left", num=num)
     wire([p_mcu, (CX0, cy)], C_595)
     t((BX1 + CX0) / 2, cy - 12, netlabel, 10, "middle", True, C_595)
 
+sym_pin((CX0, 472), "OE", "left", num="13")
+wire([(CX0, 472), (1100, 472)])
+gnd_at((1100, 472))
+t((BX1 + CX0) / 2, 460, "OE to ground", 10, "middle", True, C_595)
 sym_pin((1200, CY0), "VCC", "top")
 sym_pin((1270, CY0), "MR", "top")
 wire([(1200, CY0), (1200, 110)], C_5V)
@@ -403,54 +407,35 @@ t(1790, 206, "LED1 = start of the lane", 11, "start", False, SUB)
 t(1790, 246, "anode (+) → 470 Ω → Qn", 10, "start", False, SUB)
 t(1790, 264, "cathode (−) → common ground", 10, "start", False, SUB)
 t(1790, 300, "≈ 6 mA per LED · chip max 70 mA", 10, "start", False, SUB)
-t(1790, 340, "OE needs a 10 kΩ pull-up to 5 V —", 10, "start", True, "#b45309")
-t(1790, 358, "it keeps the LEDs dark during reset", 10, "start", False, SUB)
+t(1790, 340, "OE (pin 13) tied to ground —", 10, "start", True, "#b45309")
+t(1790, 358, "LEDs on/off only, no PWM dimming", 10, "start", False, SUB)
 t(1790, 394, "Q7′ (pin 9) → DS of a second 595", 10, "start", False, GREY)
 t(1790, 412, "if you ever want 16 LEDs", 10, "start", False, GREY)
 t(1790, 486, "LED8 = end of the lane", 11, "start", False, SUB)
 
-# ================================================================ LCD 16×2
+# ================================================================ LCD 16×2 (I2C backpack)
 LX0, LX1, LY0, LY1 = 1150, 1900, 540, 1090
 box(LX0, LY0, LX1 - LX0, LY1 - LY0, "#166534", "#14532d", 10, 2)
-t(LX0 + 26, LY0 + 36, "LCD 16×2 (HD44780) — 4-bit mode", 15, "start", True, "#ffffff")
+t(LX0 + 26, LY0 + 36, "LCD 16×2 + I2C backpack (PCF8574)", 15, "start", True, "#ffffff")
 box(1440, 600, 420, 250, "#1d4ed8", "#1e3a8a", 6, 2)
 s.append('<text x="1470" y="700" font-size="27" fill="#e0f2fe" font-family="Consolas, monospace">DENSE FOG  94%</text>')
 s.append('<text x="1470" y="790" font-size="27" fill="#e0f2fe" font-family="Consolas, monospace">Guide: SLOW DOWN</text>')
-for p_mcu, name, num in ((P_D8, "D7", "14"), (P_D7, "D6", "13"), (P_D6, "D5", "12"),
-                         (P_D5, "D4", "11"), (P_D4, "E", "6"), (P_D3, "RS", "4")):
-    sym_pin((LX0, p_mcu[1]), name, "left", num=num)
+for p_mcu, name in ((P_A4, "SDA"), (P_A5, "SCL")):
+    sym_pin((LX0, p_mcu[1]), name, "left")
     wire([p_mcu, (LX0, p_mcu[1])], C_LCD)
-t((BX1 + LX0) / 2, 544, "4-bit data bus + RS / E", 10, "middle", True, C_LCD)
+t((BX1 + LX0) / 2, 544, "I2C: SDA + SCL", 10, "middle", True, C_LCD)
+t(LX0 + 26, LY0 + 60, "I2C address 0x27 (0x3F on some boards)", 11, "start", False, "#bbf7d0")
 
-# power pins that need +5 V sit on the right edge, so their flags can point up
-sym_pin((LX1, 900), "VDD", "right", num="2")
+# power pins of the backpack
+sym_pin((LX1, 900), "VCC", "right")
 wire([(LX1, 900), (1950, 900)], C_5V)
 v5_at((1950, 900), 24)
-sym_pin((LX1, 1000), "A", "right", num="15")
-wire([(LX1, 1000), (1990, 1000)], C_5V)
-res_between((1990, 1000), (1990, 906), "220 Ω", "left")
-v5_at((1990, 906), 22)
-t(1946, 1028, "backlight", 10, "middle", False, SUB)
-
-# grounds and contrast sit on the bottom edge, so their symbols hang downwards
-for x, name, num in ((1300, "VSS", "1"), (1450, "V0", "3"), (1600, "RW", "5"), (1750, "K", "16")):
-    s.append(f'<circle cx="{x}" cy="{LY1}" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>')
-    s.append(f'<text x="{x}" y="{LY1 - 16}" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" '
-             f'font-family="Consolas, monospace">{name} <tspan fill="#bbf7d0" font-weight="normal">{num}</tspan></text>')
-for x in (1300, 1600, 1750):
-    wire([(x, LY1), (x, 1280)])
-wire([(1300, 1280), (1750, 1280)])
-dot((1600, 1280))
-dot((1750, 1280))
-dot((1380, 1280))
-gnd_at((1380, 1280))
-# contrast potentiometer: +5 V on top, ground at the bottom, wiper to V0
-wire([(1450, LY1), (1450, 1220)])
-s.append(f'<line x1="1450" y1="1220" x2="1544" y2="1220" stroke="{C_BODY}" stroke-width="2.2" marker-end="url(#glow)"/>')
-res_between((1560, 1150), (1560, 1280), "10 kΩ")
-v5_at((1560, 1150), 24)
-dot((1560, 1280))
-t(1560, 1330, "contrast pot — turn this if the screen stays blank", 10, "middle", False, SUB)
+s.append(f'<circle cx="1750" cy="{LY1}" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>')
+s.append(f'<text x="1750" y="{LY1 - 16}" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" '
+         f'font-family="Consolas, monospace">GND</text>')
+wire([(1750, LY1), (1750, 1180)])
+gnd_at((1750, 1180))
+t(1750, 1230, "contrast: small trimmer on the backpack", 10, "middle", False, SUB)
 
 # ================================================================ legend
 box(60, 1130, 600, 180, "#f9fafb", "#e5e7eb", 10, 1.4)
@@ -466,7 +451,7 @@ dot((100, 1222))
 t(126, 1226, "junction = wires joined", 11, "start")
 t(364, 1226, "grey numbers = chip pin numbers", 11, "start")
 nets = [("DHT11 DATA (D2)", C_DHT), ("LDR (A0)", C_LDR), ("Phototransistor (A1)", C_RX), ("Laser drive (A2)", C_LASER),
-        ("Buttons (A3 / A4)", C_BTN), ("Status LED (A5)", C_STAT), ("LCD bus (D3–D8)", C_LCD), ("74HC595 (D9–D13)", C_595)]
+        ("Buttons (D3 / D4)", C_BTN), ("Status LED (D5)", C_STAT), ("LCD I2C (A4 / A5)", C_LCD), ("74HC595 (D11–D13)", C_595)]
 for i, (name, col) in enumerate(nets):
     x = 86 + (i % 2) * 278
     y = 1252 + (i // 2) * 18
@@ -493,15 +478,15 @@ t(686, 1426, "POWER &amp; NOTES", 12, "start", True)
 left_notes = [
     "• Everything runs from the USB 5 V rail — about 165 mA in total.",
     "• 74HC595: VCC and MR to 5 V, GND to ground, 100 nF across the supply pins,",
-    "   and 10 kΩ from OE to 5 V so the LEDs stay dark during reset and upload.",
+    "   and OE (pin 13) straight to ground. Data, latch and clock are plain D11–D13.",
     "• Each LED draws ≈ 6 mA (470 Ω); one 595 carries 70 mA in total. For brighter",
     "   road LEDs use a TPIC6B595 or add ULN2803 drivers.",
 ]
 right_notes = [
-    "• LCD: RW to ground (write only), V0 to the 10 kΩ contrast pot, backlight via 220 Ω.",
+    "• LCD: I2C backpack — SDA to A4, SCL to A5, VCC 5 V, GND. Blank screen: turn the trimmer.",
     "• The laser is switched by Q1, never straight from a pin. Keep the phototransistor",
     "   in a black tube, aligned with the beam, 30–50 cm away.",
-    "• D12 (SPI MISO) and D0/D1 (USB serial, used for AI data recording) stay free.",
+    "• D6–D10, A3 and D0/D1 (USB serial, AI data recording) stay free.",
     "• Every ground symbol is the same net — join all grounds on the breadboard.",
 ]
 for i, line in enumerate(left_notes):
