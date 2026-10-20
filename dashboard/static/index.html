@@ -204,6 +204,8 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
       </div>
 
       <div class="grid g3">
+        <div class="card p"><h2>Conditions <small>light + fog</small></h2><div class="rows" id="cond"></div><div class="bars" id="lprobs" style="margin-top:10px"></div>
+          <div class="note">Light class (day / twilight / night) comes from the LDR; fog class from the main AI. Both are debounced on the Uno.</div></div>
         <div class="card p"><h2>Raw sensor readings</h2><div class="rows" id="raw"></div>
           <div class="note">Unfiltered: DHT11 before gain/offset, single ADC reads of the LDR and of the one receiver (phototransistor, A1), read twice: laser switched OFF (ambient light only) and ON (ambient + laser). ON − OFF is the laser signal; the AI uses its averaged value.</div></div>
       </div>
@@ -293,12 +295,13 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
       <div class="card p"><h2>Learning <small>collect labelled data → train the model → install it → upload</small>
           <span class="sp"></span><span class="seg" id="lrKind"><button class="on" data-k="train">Recorded data</button><button data-k="sim">Simulator data (demo)</button></span></h2>
         <div class="grid g3" style="gap:12px">
-          <div class="bn info"><b>1 · Collect.</b> Record every scenario with its true label (clear, light fog, dense fog) — include the tricky ones: humid but no fog, dark but no fog.</div>
+          <div class="bn info"><b>1 · Collect.</b> Record every scenario with its true fog label (clear, light fog, dense fog) <i>and</i> its light (daylight, twilight, night) — include the tricky ones: humid but no fog, dark but no fog. The light model needs ≥ 5 rows of each light class; the fog model ignores the light label.</div>
           <div class="bn info"><b>2 · Train.</b> The model is trained on a 80/20 split in blocks of consecutive rows, so the test score is honest.</div>
           <div class="bn info"><b>3 · Install.</b> Writes <code>model_weights.h</code> (the old one is backed up) and uploads the firmware.</div></div></div>
       <div class="card p"><h2>Record training data <small>same CSV as RECORD_DATA.bat → TRAIN_MODEL.bat</small></h2>
         <div class="conn">
           <label class="f">Label (what the air really is)<select id="rLabel"><option value="clear">clear</option><option value="light_fog">light_fog</option><option value="dense_fog">dense_fog</option></select></label>
+          <label class="f">Light (what the light really is)<select id="rLight"><option value="">— not set (fog model only)</option><option value="day">daylight</option><option value="twilight">twilight</option><option value="night">night</option></select></label>
           <label class="f">Scenario note<input id="rNote" placeholder="e.g. humid_nofog" style="width:200px"></label>
           <button class="btn primary" id="rStart">Start / change label</button>
           <button class="btn danger" id="rStop">Stop</button>
@@ -366,7 +369,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
           <tr><td>PC → Uno</td><td><code>c d p i h</code></td><td>calibrate · demo on/off · next LCD page · info · help</td></tr>
           <tr><td>PC → Uno</td><td><code>!get</code> <code>!set key=value</code> <code>!reset</code></td><td>read / write / restore the settings above</td></tr>
           <tr><td>Uno → PC</td><td><code>H,…</code> <code>D,…</code></td><td>CSV header and one sample per second (same as the recorder)</td></tr>
-          <tr><td>Uno → PC</td><td><code>S,mode,calibrated,dhtFails,rxSat</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), health</td></tr>
+          <tr><td>Uno → PC</td><td><code>S,mode,calibrated,dhtFails,rxSat,light,pDay,pTwilight,pNight</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), health, light class (0 day, 1 twilight, 2 night) and its probabilities</td></tr>
           <tr><td>Uno → PC</td><td><code>R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn</code></td><td>raw sensor values before calibration, averaging and laser OFF/ON subtraction</td></tr>
           <tr><td>Uno → PC</td><td><code>C,key=value,…</code></td><td>current settings</td></tr>
           <tr><td>Uno → PC</td><td><code># …</code></td><td>messages (state changes, calibration result, errors)</td></tr></table></div></div>
@@ -388,6 +391,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
 "use strict";
 const $ = id => document.getElementById(id);
 const NIGHT_LIGHT = 0.2;  // ambient-light feature below this is drawn as night
+const LIGHTN = ["Daylight", "Twilight", "Night"], LSHORT = ["Day", "Twilight", "Night"], FOGN = ["Clear", "Light Mist", "Dense Fog"];
 const STATES = ["CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"];
 const FEATS = [["temp", -2, 3], ["humidity", -3.5, 1.5], ["dew_spread", 0, 4], ["light", 0, 1], ["attenuation", -0.2, 1.2]];
 const SET_INFO = {
@@ -566,6 +570,12 @@ function render() {
   }).join("");
   for (let i = 0; i < 5; i++) $("f" + i).textContent = sm ? num(sm["f_" + FEATS[i][0]], 3) : "—";
 
+  // light + fog conditions
+  const lp = st && st.lightP ? st.lightP : null, lt = st && st.light != null ? st.light : null;
+  $("cond").innerHTML = lt == null || !sm ? '<div class="empty">No light class yet (re-upload the firmware).</div>' :
+    [["Light", LIGHTN[lt]], ["Fog", FOGN[sm.state]], ["Combined", `<b>${LSHORT[lt]} + ${FOGN[sm.state]}</b>`]].map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("");
+  $("lprobs").innerHTML = (lp || [0, 0, 0]).map((p, i) => `<div class="bar"><span class="t">${LIGHTN[i]}</span><div class="track"><i class="c${i}" style="width:${(p * 100).toFixed(1)}%"></i></div><span class="num">${(p * 100).toFixed(0)} %</span></div>`).join("");
+
   // health
   const tag = (t, cls) => `<span class="tag ${cls}">${t}</span>`;
   const rows = [];
@@ -701,10 +711,10 @@ $("bInfo").onclick = () => { act("/api/command", { cmd: "info" }, "Model info �
 /* ---------------------------------------------------------------- record + logs */
 function renderRecord() {
   const r = S.recording, n = r.counts.clear + r.counts.light_fog + r.counts.dense_fog;
-  $("rStat").textContent = r.on ? `recording "${r.label}" · note ${r.note || "-"} · clear ${r.counts.clear}, light ${r.counts.light_fog}, dense ${r.counts.dense_fog} (${n}) · skipped ${r.skipped} · ${r.file || "waiting for first row"}` : "not recording";
+  $("rStat").textContent = r.on ? `recording "${r.label}" · light ${r.light || "-"} · note ${r.note || "-"} · clear ${r.counts.clear}, light ${r.counts.light_fog}, dense ${r.counts.dense_fog} (${n}) · skipped ${r.skipped} · ${r.file || "waiting for first row"}` : "not recording";
   $("rStart").disabled = !S.link.mode; $("rStop").disabled = !r.on;
 }
-$("rStart").onclick = () => act("/api/record", { action: "start", label: $("rLabel").value, note: $("rNote").value }, "Recording");
+$("rStart").onclick = () => act("/api/record", { action: "start", label: $("rLabel").value, light: $("rLight").value, note: $("rNote").value }, "Recording");
 $("rStop").onclick = () => act("/api/record", { action: "stop" }, "Recording stopped").then(loadFiles);
 async function loadFiles() {
   const r = await api("/api/recordings").catch(() => null); if (!r) return;
@@ -940,9 +950,9 @@ function renderLearning() {
   if (!LR) return;
   const d = LR.data, busy = JOBS.state === "running", sim = LRKIND === "sim";
   $("dsKind").textContent = sim ? "simulator recordings (sim_*.csv) — only for trying the pipeline" : "recordings from the real board (train_*.csv)";
-  $("dsBox").innerHTML = d.files.length ? '<div style="overflow:auto"><table><tr><th>File</th><th>clear</th><th>light fog</th><th>dense fog</th><th>Scenario notes</th></tr>' +
-    d.files.map(f => `<tr><td>${esc(f.name)}</td><td class="num">${f.counts.clear}</td><td class="num">${f.counts.light_fog}</td><td class="num">${f.counts.dense_fog}</td><td>${esc(f.notes.join(", "))}</td></tr>`).join("") +
-    `<tr><th>Total ${d.rows}</th><th class="num">${d.totals.clear}</th><th class="num">${d.totals.light_fog}</th><th class="num">${d.totals.dense_fog}</th><th>${d.ready ? '<span class="tag ok">enough to train</span>' : '<span class="tag warn">need ≥ 5 rows of every class</span>'}</th></tr></table></div>`
+  $("dsBox").innerHTML = d.files.length ? '<div style="overflow:auto"><table><tr><th>File</th><th>clear</th><th>light fog</th><th>dense fog</th><th>day</th><th>twilight</th><th>night</th><th>Scenario notes</th></tr>' +
+    d.files.map(f => `<tr><td>${esc(f.name)}</td><td class="num">${f.counts.clear}</td><td class="num">${f.counts.light_fog}</td><td class="num">${f.counts.dense_fog}</td><td class="num">${f.light.day}</td><td class="num">${f.light.twilight}</td><td class="num">${f.light.night}</td><td>${esc(f.notes.join(", "))}</td></tr>`).join("") +
+    `<tr><th>Total ${d.rows}</th><th class="num">${d.totals.clear}</th><th class="num">${d.totals.light_fog}</th><th class="num">${d.totals.dense_fog}</th><th class="num">${d.lightTotals.day}</th><th class="num">${d.lightTotals.twilight}</th><th class="num">${d.lightTotals.night}</th><th>${d.ready ? '<span class="tag ok">fog model: enough to train</span>' : '<span class="tag warn">fog: need ≥ 5 rows of every class</span>'} ${d.lightReady ? '<span class="tag ok">light model: enough</span>' : '<span class="tag off">light model: need ≥ 5 rows of day, twilight, night</span>'}</th></tr></table></div>`
     : `<div class="empty">No ${sim ? "simulator" : "recorded"} data yet. Record above (connect the ${sim ? "simulator" : "board"} first).</div>`;
   const m = LR.model;
   $("lrModel").textContent = m.exists ? `${m.trainedOn} · ${new Date(m.modified * 1000).toLocaleString()}` : "missing";
@@ -974,6 +984,12 @@ $("lrTrain").onclick = () => runTrain(false);
 $("lrCompare").onclick = () => runTrain(true);
 $("lrInstall").onclick = () => runInstall(false);
 $("lrInstallUp").onclick = () => runInstall(true);
+function lightRes(l) {
+  if (!l || l.accuracy == null) return '<div class="note" style="margin-top:12px">Light model: not trained (needs ≥ 5 recorded rows of day, twilight and night); the installed light weights are kept.</div>';
+  const cls = ["day", "twilight", "night"], pct = v => v == null ? "—" : v.toFixed(1) + " %";
+  const conf = l.confusion.length === 3 ? '<table><tr><th>true ↓ / predicted →</th>' + cls.map(c => `<th>${c}</th>`).join("") + "</tr>" + l.confusion.map((row, i) => `<tr><td>${cls[i]}</td>${row.map((v, k) => `<td class="num" style="${i === k ? "font-weight:700;color:var(--green)" : v ? "color:var(--red)" : ""}">${v}</td>`).join("")}</tr>`).join("") + "</table>" : "";
+  return `<h2 style="margin-top:18px">Light model <small>day / twilight / night · ${l.rows} unseen rows</small></h2><div class="grid g3"><div class="tile" style="padding:0 0 12px"><span class="k">Accuracy on unseen data</span><span class="v">${l.accuracy.toFixed(1)}<small>%</small></span></div><div>${conf}</div><table><tr><th>Class</th><th>Recall</th><th>Precision</th></tr>${cls.map(c => `<tr><td>${c}</td><td class="num">${pct(l.recall[c])}</td><td class="num">${pct(l.precision[c])}</td></tr>`).join("")}</table></div>`;
+}
 function showResult(j) {
   const r = j.result; if (j.state !== "ok" || !r || r.accuracy == null) return;
   const cls = ["clear", "light_fog", "dense_fog"], pct = v => v == null ? "—" : v.toFixed(1) + " %";
@@ -991,6 +1007,7 @@ function showResult(j) {
     ${r.warning ? `<div class="bn warn" style="margin-bottom:12px">${esc(r.warning)}</div>` : ""}
     <div class="grid g3"><div><div class="tile" style="padding:0 0 12px"><span class="k">Accuracy on unseen data</span><span class="v">${r.accuracy.toFixed(1)}<small>%</small></span></div>${rec}</div>
       <div><b style="font-size:12.5px">Confusion matrix</b>${conf}</div><div><b style="font-size:12.5px">Which input matters</b><div style="margin-top:8px">${inf}</div></div></div>
+    ${lightRes(r.light)}
     ${cmp ? `<h2 style="margin-top:18px">Sensor comparison</h2>${cmp}` : ""}${drop ? `<h2 style="margin-top:18px">Drop-one test</h2>${drop}` : ""}`;
   el.scrollIntoView({ behavior: "smooth", block: "start" });
 }

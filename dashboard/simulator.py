@@ -27,6 +27,7 @@ FW_DIR = os.path.join(BASE, "firmware", "fog_illumination_uno")
 EEPROM_FILE = os.path.join(BASE, "dashboard", "data", "sim_eeprom.json")
 
 STATE_NAME = ["CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"]
+LIGHT_NAME = ["Day", "Twilight", "Night"]
 ST_CLEAR, ST_LIGHT, ST_DENSE, MODE_FAULT = 0, 1, 2, 3
 FAULT_DHT, FAULT_LASER = 1, 2
 
@@ -67,7 +68,9 @@ def _read_model():
     w_block = re.search(r"MODEL_W\[[^\]]*\]\[[^\]]*\]\s*=\s*\{(.*?)\};", txt, re.S).group(1)
     W = [[float(x) for x in re.findall(r"-?[\d.]+(?=f)", row)] for row in re.findall(r"\{([^{}]*)\}", w_block)]
     B = [float(x) for x in re.findall(r"-?[\d.]+(?=f)", re.search(r"MODEL_B\[[^\]]*\]\s*=\s*\{(.*?)\};", txt, re.S).group(1))]
-    return W, B
+    lw = [float(x) for x in re.findall(r"-?[\d.]+(?=f)", re.search(r"LIGHT_W\[[^\]]*\]\s*=\s*\{(.*?)\};", txt, re.S).group(1))]
+    lb = [float(x) for x in re.findall(r"-?[\d.]+(?=f)", re.search(r"LIGHT_B\[[^\]]*\]\s*=\s*\{(.*?)\};", txt, re.S).group(1))]
+    return W, B, lw, lb
 
 
 def _fw_version():
@@ -99,7 +102,7 @@ class FogSim:
 
     def __init__(self, scenario="auto", speed=1.0, persist=True, seed=None):
         self.cfgh = _read_defines()
-        self.W, self.B = _read_model()
+        self.W, self.B, self.LW, self.LB = _read_model()
         self.fw = _fw_version()
         self.rnd = random.Random(seed)
         self.speed = float(speed)
@@ -123,6 +126,9 @@ class FogSim:
         self.prob = [0.0] * 3
         self.pred = self.state = self.pending = ST_CLEAR
         self.pending_count = 0
+        self.light_prob = [0.0] * 3
+        self.light_pred = self.light_state = self.light_pending = 0  # 0 day, 1 twilight, 2 night
+        self.light_pending_count = 0
         self.faults = 0
         self.laser_bad_count = 0
         self.demo = False
@@ -325,6 +331,26 @@ class FogSim:
             if self.prob[k] > self.prob[self.pred]:
                 self.pred = k
 
+    def run_light(self):
+        z = [self.LB[k] + self.LW[k] * self.feat[3] for k in range(3)]
+        zmax = max(z)
+        e = [math.exp(v - zmax) for v in z]
+        s = sum(e)
+        self.light_prob = [v / s for v in e]
+        self.light_pred = 0
+        for k in range(3):
+            if self.light_prob[k] > self.light_prob[self.light_pred]:
+                self.light_pred = k
+        if self.light_pred == self.light_state:
+            self.light_pending_count = 0
+            return
+        if self.light_pred != self.light_pending:
+            self.light_pending, self.light_pending_count = self.light_pred, 0
+        self.light_pending_count += 1
+        if self.light_pending_count >= self.cfg["confirmDown"]:
+            self._p(f"# LIGHT {LIGHT_NAME[self.light_state]} -> {LIGHT_NAME[self.light_pred]}")
+            self.light_state, self.light_pending_count = self.light_pred, 0
+
     def check_faults(self):
         c = self.cfgh
         if self.dht_fails >= c["DHT_MAX_FAILS"]:
@@ -384,6 +410,7 @@ class FogSim:
         self.run_model()
         self.check_faults()
         self.update_state()
+        self.run_light()
         f, p = self.feat, self.prob
         self._p("D," + ",".join([
             str(self.now), fmt(self.temp_c, 1), fmt(self.hum_rh, 1), fmt(self.dew_spread, 2),
@@ -391,7 +418,8 @@ class FogSim:
             *[fmt(x, 4) for x in f], *[fmt(x, 3) for x in p],
             str(self.pred), str(self.state), str(self.faults), "1" if self.demo else "0"]))
         mode = self.current_mode()
-        self._p(f"S,{mode},{1 if self.calibrated else 0},{self.dht_fails},{1 if self.rx_sat else 0}")
+        self._p(f"S,{mode},{1 if self.calibrated else 0},{self.dht_fails},{1 if self.rx_sat else 0},{self.light_state},"
+                 + ",".join(fmt(x, 3) for x in self.light_prob))
         off, on = self._adc_pair()
         ldr = int(clampf(round(1023 * self._ambient() + self.rnd.gauss(0, 3)), 0, 1023))
         self._p(f"R,{self.now},{fmt(self.raw_t, 1)},{fmt(self.raw_h, 1)},{ldr},{off},{on}")

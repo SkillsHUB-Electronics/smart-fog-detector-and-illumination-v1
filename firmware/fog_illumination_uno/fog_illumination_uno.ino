@@ -29,6 +29,9 @@ LiquidCrystal_I2C lcd(LCD_I2C_ADDR, 16, 2);
 
 enum { ST_CLEAR = 0, ST_LIGHT = 1, ST_DENSE = 2, MODE_FAULT = 3 };
 static const char *const STATE_NAME[4] = {"CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"};
+enum { LT_DAY = 0, LT_TWILIGHT = 1, LT_NIGHT = 2 };
+static const char *const LIGHT_NAME[3] = {"Day", "Twilight", "Night"};
+static const char *const FOG_SHORT[3] = {"Clear", "L.Mist", "Dense"};
 static const char *const FEATURE_NAME[MODEL_N_FEATURES] = {"temp", "humidity", "dew_spread", "light", "attenuation"};
 
 #define FAULT_DHT   1
@@ -63,6 +66,8 @@ float feat[MODEL_N_FEATURES];
 float prob[MODEL_N_CLASSES];
 uint8_t pred = ST_CLEAR, state = ST_CLEAR, pending = ST_CLEAR, pendingCount = 0;
 uint8_t faults = 0, laserBadCount = 0;
+float lightProb[LIGHT_N_CLASSES];
+uint8_t lightPred = LT_DAY, lightState = LT_DAY, lightPending = LT_DAY, lightPendingCount = 0;
 
 // ---------------- Output / UI state -----------------------------------------
 bool demo = false;
@@ -332,6 +337,30 @@ void runModel() {
   }
 }
 
+// Light condition (day / twilight / night) from the light feature; changes after confirmDown samples in a row.
+void runLight() {
+  float z[LIGHT_N_CLASSES], zmax = -1e9;
+  for (uint8_t k = 0; k < LIGHT_N_CLASSES; k++) {
+    z[k] = LIGHT_B[k] + LIGHT_W[k] * feat[3];
+    if (z[k] > zmax) zmax = z[k];
+  }
+  float sum = 0;
+  for (uint8_t k = 0; k < LIGHT_N_CLASSES; k++) { lightProb[k] = expf(z[k] - zmax); sum += lightProb[k]; }
+  lightPred = 0;
+  for (uint8_t k = 0; k < LIGHT_N_CLASSES; k++) {
+    lightProb[k] /= sum;
+    if (lightProb[k] > lightProb[lightPred]) lightPred = k;
+  }
+  if (lightPred == lightState) { lightPendingCount = 0; return; }
+  if (lightPred != lightPending) { lightPending = lightPred; lightPendingCount = 0; }
+  if (++lightPendingCount >= cfg.confirmDown) {
+    Serial.print(F("# LIGHT ")); Serial.print(LIGHT_NAME[lightState]);
+    Serial.print(F(" -> ")); Serial.println(LIGHT_NAME[lightPred]);
+    lightState = lightPred;
+    lightPendingCount = 0;
+  }
+}
+
 void checkFaults() {
   if (dhtFails >= DHT_MAX_FAILS) faults |= FAULT_DHT; else faults &= ~FAULT_DHT;
   // A (nearly) vanished laser beam while the air is dry cannot be fog:
@@ -382,13 +411,16 @@ void printSample() {
 
 uint8_t currentMode();
 
-// Extra line for the dashboard (the recorder ignores it): S,mode,calibrated,dhtFails,rxSat
+// Extra line for the dashboard (the recorder ignores it): S,mode,calibrated,dhtFails,rxSat,light,pDay,pTwilight,pNight
 void printStatus() {
   uint8_t mode = currentMode();
   Serial.print(F("S,")); Serial.print(mode);
   Serial.print(','); Serial.print(calibrated ? 1 : 0);
   Serial.print(','); Serial.print(dhtFails);
-  Serial.print(','); Serial.println(rxSat ? 1 : 0);
+  Serial.print(','); Serial.print(rxSat ? 1 : 0);
+  Serial.print(','); Serial.print(lightState);
+  for (uint8_t k = 0; k < LIGHT_N_CLASSES; k++) { Serial.print(','); Serial.print(lightProb[k], 3); }
+  Serial.println();
 }
 
 // Raw line (the recorder and train_model.py ignore it): R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn
@@ -439,6 +471,7 @@ void sampleAndDecide(uint32_t now) {
   runModel();
   checkFaults();
   updateState();
+  runLight();
   printSample();
   printStatus();
   printRaw();
@@ -525,9 +558,14 @@ void drawLcd(uint32_t now) {
       sprintf(l1, "Light:%3d%% S:%d", (int)lroundf(feat[3] * 100), (int)laserSig);
       break;
     }
-    default: {
+    case 3: {
       sprintf(l0, "AI  C   L   D  %%");
       sprintf(l1, "   %3d %3d %3d", (int)lroundf(prob[0] * 100), (int)lroundf(prob[1] * 100), (int)lroundf(prob[2] * 100));
+      break;
+    }
+    default: {
+      sprintf(l0, "%-9s %3d%%", LIGHT_NAME[lightState], (int)lroundf(lightProb[lightState] * 100));
+      sprintf(l1, "%s+%s", LIGHT_NAME[lightState], FOG_SHORT[mode]);
       break;
     }
   }
@@ -552,7 +590,7 @@ void lcdWatch() {
 }
 
 void nextPage(uint32_t now) {
-  lcdPage = (lcdPage + 1) % 4;
+  lcdPage = (lcdPage + 1) % LCD_PAGES;
   manualUntil = now + LCD_MANUAL_MS;
   lastPageFlip = now;
   msgUntil = 0;
@@ -710,7 +748,7 @@ void loop() {
 
   if (now > manualUntil && now - lastPageFlip >= LCD_PAGE_MS) {
     lastPageFlip = now;
-    lcdPage = (lcdPage + 1) % 4;
+    lcdPage = (lcdPage + 1) % LCD_PAGES;
   }
   if (now - lastLcd >= LCD_REFRESH_MS) {
     lastLcd = now;

@@ -43,6 +43,7 @@ DB_PATH = os.path.join(DB_DIR, "fog_log.db")
 HISTORY_MAX = 3600        # one sample per second = 1 hour
 TX_GAP_S = 0.15           # pause between lines sent to the Uno (its serial buffer is only 64 bytes)
 LABELS = ["clear", "light_fog", "dense_fog"]
+LIGHT_LABELS = ["day", "twilight", "night"]
 COMMANDS = {"calibrate": "c", "demo": "d", "page": "p", "info": "i", "help": "h"}
 INT_FIELDS = {"light_raw", "pred", "state", "fault", "demo", "ms"}
 
@@ -98,7 +99,7 @@ class Hub:
         self.tx_next = 0.0
         self.subs = []
         self.dirty = False
-        self.rec = {"on": False, "label": "", "note": "", "path": "", "fh": None, "writer": None,
+        self.rec = {"on": False, "label": "", "light": "", "note": "", "path": "", "fh": None, "writer": None,
                     "counts": {k: 0 for k in LABELS}, "skipped": 0}
         self._init_db()
         self.db = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -312,6 +313,9 @@ class Hub:
         try:
             st = {"mode": int(p[0]), "calibrated": int(p[1]) == 1,
                   "dhtFails": int(p[2]), "rxSat": int(p[3]) == 1}
+            if len(p) >= 8:  # light condition: class 0 day, 1 twilight, 2 night + probabilities
+                st["light"] = int(p[4])
+                st["lightP"] = [float(x) for x in p[5:8]]
         except ValueError:
             return
         with self.lock:
@@ -340,20 +344,22 @@ class Hub:
             self.history.append(pt)
 
     # ----------------------------------------------------------- recording (same CSV as tools/record_data.py)
-    def start_recording(self, label, note):
+    def start_recording(self, label, note, light=""):
         if label not in LABELS:
             raise ValueError("label must be one of " + ", ".join(LABELS))
+        if light not in [""] + LIGHT_LABELS:
+            raise ValueError("light must be empty or one of " + ", ".join(LIGHT_LABELS))
         with self.lock:
             if not self.link:
                 raise ConnectionError("Not connected to the Arduino.")
             r = self.rec
-            if r["on"] and r["label"] != label:  # new label: keep the file, just switch
-                r["label"] = label
+            if r["on"] and (r["label"] != label or r["light"] != light):  # new label: keep the file, just switch
+                r["label"], r["light"] = label, light
             elif not r["on"]:
-                r.update(on=True, path="", fh=None, writer=None, counts={k: 0 for k in LABELS}, skipped=0, label=label)
+                r.update(on=True, path="", fh=None, writer=None, counts={k: 0 for k in LABELS}, skipped=0, label=label, light=light)
             r["note"] = (note or "").replace(",", " ").strip()
             self.dirty = True
-        self.log("record", f"Recording: label={label} note={self.rec['note'] or '-'}")
+        self.log("record", f"Recording: label={label} light={light or '-'} note={self.rec['note'] or '-'}")
 
     def write_row(self, raw):
         r = self.rec
@@ -364,8 +370,8 @@ class Hub:
             r["path"] = os.path.join(DATA_DIR, datetime.now().strftime(prefix + "%Y%m%d_%H%M%S.csv"))
             r["fh"] = open(r["path"], "w", newline="", encoding="utf-8")
             r["writer"] = csv.writer(r["fh"])
-            r["writer"].writerow(["pc_time", "label", "note"] + self.header)
-        r["writer"].writerow([now_iso(), r["label"], r["note"]] + raw)
+            r["writer"].writerow(["pc_time", "label", "note", "light_cond"] + self.header)
+        r["writer"].writerow([now_iso(), r["label"], r["note"], r["light"]] + raw)
         r["fh"].flush()
         r["counts"][r["label"]] += 1
 
@@ -377,7 +383,7 @@ class Hub:
                 r["fh"].close()
             total = sum(r["counts"].values())
             path = r["path"]
-            r.update(on=False, label="", fh=None, writer=None)
+            r.update(on=False, label="", light="", fh=None, writer=None)
             self.dirty = True
         if was:
             self.log("record", f"Recording stopped: {total} rows" + (f" -> {os.path.basename(path)}" if path else ""))
@@ -406,7 +412,7 @@ class Hub:
                 "sample": self.sample, "status": self.status, "raw": self.raw, "cfg": self.cfg, "calBoard": self.cal_board,
                 "limits": simulator.CFG_LIMITS,
                 "scenario": sim.scenario if sim else None, "scenarios": simulator.SCENARIOS,
-                "recording": {"on": r["on"], "label": r["label"], "note": r["note"],
+                "recording": {"on": r["on"], "label": r["label"], "light": r["light"], "note": r["note"],
                               "file": os.path.basename(r["path"]) if r["path"] else "",
                               "counts": r["counts"], "skipped": r["skipped"]},
                 "logSeq": self.log_seq, "consoleSeq": self.console_seq, "now": time.time(),
@@ -655,7 +661,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "message": msg})
             elif p == "/api/record":
                 if d.get("action") == "start":
-                    HUB.start_recording(d.get("label", ""), d.get("note", ""))
+                    HUB.start_recording(d.get("label", ""), d.get("note", ""), d.get("light", ""))
                 else:
                     HUB.stop_recording()
             else:

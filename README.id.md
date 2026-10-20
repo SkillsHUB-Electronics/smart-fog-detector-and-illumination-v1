@@ -164,7 +164,7 @@ setelah Anda menyetujui UAC. Fitur ini hanya untuk Windows; mode simulator tidak
 | Arah | Teks | Arti |
 |---|---|---|
 | PC → Uno | `!get` · `!set key=nilai` · `!reset` | baca / ubah / kembalikan default pengaturan perangkat |
-| Uno → PC | `S,mode,calibrated,dhtFails,rxSat` | tiap sampel: mode lampu (0 clear, 1 light, 2 dense, 3 fault), kesehatan |
+| Uno → PC | `S,mode,calibrated,dhtFails,rxSat,light,pDay,pTwilight,pNight` | tiap sampel: mode lampu (0 clear, 1 light, 2 dense, 3 fault), kesehatan, kelas cahaya (0 day, 1 twilight, 2 night) + probabilitasnya |
 | Uno → PC | `R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn` | nilai mentah tiap sampel: DHT11 sebelum gain/offset, satu pembacaan ADC LDR dan receiver (laser OFF/ON), tanpa rata-rata atau selisih |
 | Uno → PC | `C,key=nilai,...` | pengaturan perangkat saat ini (saat boot dan setelah `!get`/`!set`) |
 | Uno → PC | `K,ldrLo=,ldrHi=,tGain=,tOff=,hGain=,hOff=` | kalibrasi yang dikompilasi di firmware (`calibration.h`), dikirim saat boot dan setelah `!get` |

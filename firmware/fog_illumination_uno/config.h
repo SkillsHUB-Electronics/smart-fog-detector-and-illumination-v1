@@ -55,6 +55,7 @@
 // ---------------- User interface --------------------------------------------
 #define LONG_PRESS_MS    2000
 #define LCD_REFRESH_MS    500
+#define LCD_PAGES           5  // 0 state, 1 climate, 2 laser, 3 AI probabilities, 4 light + fog condition
 #define LCD_PAGE_MS      3000  // automatic page rotation
 #define LCD_MANUAL_MS   15000  // after a button press, stay on that page this long
 #define DEMO_STEP_MS     5000  // demo mode: time per state

@@ -6,6 +6,7 @@ Record labelled training data from the Arduino Uno over USB.
 
 While it runs, press a key to set the label of the rows being recorded:
   0 = clear      1 = light fog      2 = dense fog      SPACE = pause (not recording)
+  d = day        t = twilight       g = night (dark)   sets the light_cond column (kept until changed)
   n = change scenario note          c = calibrate the device (clear air!)
   q = quit
 
@@ -34,12 +35,13 @@ except ImportError:
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE, "data")
 LABELS = {"0": "clear", "1": "light_fog", "2": "dense_fog"}
+LIGHT_LABELS = {"d": "day", "t": "twilight", "g": "night"}  # g = "gelap"; n is already the note key
 STATE_NAMES = ["CLEAR", "LIGHT", "DENSE"]
 DEFAULT_HEADER = ("ms,temp,hum,dew_spread,light_raw,laser_sig,baseline,f_temp,f_humidity,f_dew_spread,"
                   "f_light,f_attenuation,p_clear,p_light,p_dense,pred,state,fault,demo").split(",")
 
 
-def status_line(label, note, row, counts):
+def status_line(label, note, light, row, counts):
     rec = f"REC {label:<9}" if label else "PAUSED       "
     try:
         att = float(row["f_attenuation"]) * 100
@@ -56,7 +58,7 @@ def status_line(label, note, row, counts):
     if row.get("demo") == "1":
         flags += " DEMO"
     total = " ".join(f"{LABELS[k][0].upper()}{LABELS[k][1:3]}={counts[LABELS[k]]}" for k in LABELS)
-    return f"[{rec}|{note or '-'}] {s}{flags}  [{total}]"
+    return f"[{rec}|{note or '-'}|{light or 'no light'}] {s}{flags}  [{total}]"
 
 
 def main():
@@ -75,7 +77,7 @@ def main():
 
     print(__doc__.split("While it runs,")[1].split("Every recording")[0].rstrip())
     header = list(DEFAULT_HEADER)
-    label, note = None, args.note
+    label, note, light = None, args.note, ""
     counts = {v: 0 for v in LABELS.values()}
     writer = fh = None
     path = None
@@ -88,6 +90,8 @@ def main():
                 key = msvcrt.getwch().lower()
                 if key in LABELS:
                     label = LABELS[key]
+                elif key in LIGHT_LABELS:
+                    light = LIGHT_LABELS[key]
                 elif key == " ":
                     label = None
                 elif key == "c":
@@ -120,11 +124,11 @@ def main():
                                 path = os.path.join(DATA_DIR, datetime.now().strftime("train_%Y%m%d_%H%M%S.csv"))
                                 fh = open(path, "w", newline="", encoding="utf-8")
                                 writer = csv.writer(fh)
-                                writer.writerow(["pc_time", "label", "note"] + header)
-                            writer.writerow([datetime.now().isoformat(timespec="seconds"), label, note] + values)
+                                writer.writerow(["pc_time", "label", "note", "light_cond"] + header)
+                            writer.writerow([datetime.now().isoformat(timespec="seconds"), label, note, light] + values)
                             fh.flush()
                             counts[label] += 1
-                    sys.stdout.write("\r" + status_line(label, note, last_row, counts)[:150].ljust(150))
+                    sys.stdout.write("\r" + status_line(label, note, light, last_row, counts)[:150].ljust(150))
                     sys.stdout.flush()
             time.sleep(0.02)
     except KeyboardInterrupt:
