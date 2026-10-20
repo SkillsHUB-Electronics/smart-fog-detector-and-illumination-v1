@@ -386,6 +386,28 @@ void printStatus() {
   Serial.print(','); Serial.println(rxSat ? 1 : 0);
 }
 
+// Raw line (the recorder and train_model.py ignore it): R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn
+// Unfiltered values: DHT11 as read (before gain/offset), one single analogRead of the LDR and of
+// the receiver with the laser OFF and ON (no averaging, no OFF/ON subtraction). nan = DHT11 read failed.
+float rawT = NAN, rawH = NAN;
+
+void printRaw() {
+  int ldr = analogRead(PIN_LDR);
+  digitalWrite(PIN_LASER, LOW);
+  delay(LASER_SETTLE_MS);
+  int off = analogRead(PIN_RX);
+  digitalWrite(PIN_LASER, HIGH);
+  delay(LASER_SETTLE_MS);
+  int on = analogRead(PIN_RX);
+  digitalWrite(PIN_LASER, LOW);
+  Serial.print(F("R,")); Serial.print(millis());
+  Serial.print(','); Serial.print(rawT, 1);
+  Serial.print(','); Serial.print(rawH, 1);
+  Serial.print(','); Serial.print(ldr);
+  Serial.print(','); Serial.print(off);
+  Serial.print(','); Serial.println(on);
+}
+
 void sampleAndDecide(uint32_t now) {
   static uint32_t lastDht = 0;
   static bool first = true;
@@ -394,11 +416,15 @@ void sampleAndDecide(uint32_t now) {
     lastDht = now;
     float t, h;
     if (readDHT11(t, h)) {
+      rawT = t; rawH = h;
       tempC = t * CAL_TEMP_GAIN + CAL_TEMP_OFFSET;
       humRH = clampf(h * CAL_HUM_GAIN + CAL_HUM_OFFSET, 1, 100);
       dhtFails = 0;
     }
-    else if (dhtFails < 250) dhtFails++;
+    else {
+      rawT = rawH = NAN;
+      if (dhtFails < 250) dhtFails++;
+    }
   }
   lightRaw = readAvg(PIN_LDR, 8);
   float ls = measureLaser();
@@ -410,6 +436,7 @@ void sampleAndDecide(uint32_t now) {
   updateState();
   printSample();
   printStatus();
+  printRaw();
 }
 
 // ============================================================================

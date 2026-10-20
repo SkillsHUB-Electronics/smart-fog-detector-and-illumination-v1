@@ -81,6 +81,7 @@ class Hub:
         self.header = []
         self.sample = None
         self.status = None          # last S line
+        self.raw = None             # last R line (unfiltered sensor values)
         self.cfg = {}
         self.cal_board = {}      # calibration compiled into the board (K line)
         self.fw = ""
@@ -148,6 +149,7 @@ class Hub:
             self.link, self.mode, self.port, self.baud = link, mode, port, baud
             self.link_since, self.link_error = time.time(), ""
             self.header, self.sample, self.status, self.cfg, self.fw = [], None, None, {}, ""
+            self.raw = None
             self.cal_board = {}
             self.faults_prev = self.status_prev = None
             self.last_d = self.last_line = 0.0
@@ -217,6 +219,8 @@ class Hub:
             self.header = line.split(",")[1:]
         elif line.startswith("S,"):
             self.on_status(line)
+        elif line.startswith("R,"):
+            self.on_raw(line)
         elif line.startswith("C,"):
             cfg = {}
             for kv in line[2:].split(","):
@@ -287,6 +291,19 @@ class Hub:
                     self.write_row(raw)
         if self.status is None:  # board without S lines (older firmware): chart what we have
             self.add_history()
+
+    def on_raw(self, line):
+        p = line.split(",")[1:]
+        if len(p) < 6:
+            return
+        try:
+            raw = {"ms": int(p[0]), "temp": float(p[1]), "hum": float(p[2]),
+                   "ldr": int(p[3]), "rxOff": int(p[4]), "rxOn": int(p[5])}
+        except ValueError:
+            return
+        with self.lock:
+            self.raw = raw
+            self.dirty = True
 
     def on_status(self, line):
         p = line.split(",")[1:]
@@ -386,7 +403,7 @@ class Hub:
                          "since": self.link_since, "fw": self.fw,
                          "dataAge": (time.time() - self.last_d) if self.last_d else None,
                          "hasStatus": self.status is not None},
-                "sample": self.sample, "status": self.status, "cfg": self.cfg, "calBoard": self.cal_board,
+                "sample": self.sample, "status": self.status, "raw": self.raw, "cfg": self.cfg, "calBoard": self.cal_board,
                 "limits": simulator.CFG_LIMITS,
                 "scenario": sim.scenario if sim else None, "scenarios": simulator.SCENARIOS,
                 "recording": {"on": r["on"], "label": r["label"], "note": r["note"],

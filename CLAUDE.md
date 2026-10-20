@@ -78,6 +78,7 @@ Semua pekerjaan di proyek ini, dari sesi mana pun, wajib:
 - Server memakai `tools/serial_port.py` dan membaca baris `H,`/`D,`/`S,`/`C,`/`#`. Hanya satu program per port COM (dashboard, `RECORD_DATA.bat`, Serial Monitor).
 - **Firmware dan simulator harus tetap identik.** Jika logika `.ino` berubah (`computeFeatures`, `runModel`, `checkFaults`, `updateState`, `currentMode`,
   `brightnessFor`, kalibrasi, parser serial), ubah `dashboard/simulator.py` juga. Konstanta dibaca simulator dari `config.h`; bobot dari `model_weights.h`.
+- Baris `R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn` (2026-10-20): nilai mentah sebelum kalibrasi/rata-rata/selisih laser (DHT11 sebelum gain/offset, satu `analogRead` LDR dan receiver laser OFF/ON); dicetak setelah `S,`, ditampilkan di kartu Live "Raw sensor readings", simulator ikut mencetaknya. Kolom `D,` tidak berubah.
 - Protokol tambahan (firmware): `!get`, `!set key=nilai`, `!reset` (pengaturan di EEPROM alamat 16, `Cfg`), baris status `S,mode,bright,calibrated,dhtFails,rxSat`,
   baris `C,...`. Kolom `D,` tidak diubah (recorder dan `train_model.py` bergantung padanya). Batas nilai: `CFG_LIMITS` di simulator = `setCfg()` di firmware.
 - Rekaman simulator disimpan sebagai `data/sim_*.csv` agar tidak ikut training (`train_*.csv`).

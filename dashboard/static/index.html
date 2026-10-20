@@ -203,6 +203,11 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
         <div class="card p"><h2>Device health</h2><div class="rows" id="health"></div></div>
       </div>
 
+      <div class="grid g3">
+        <div class="card p"><h2>Raw sensor readings</h2><div class="rows" id="raw"></div>
+          <div class="note">Unfiltered: DHT11 before gain/offset, single ADC reads of the LDR and of the receiver with laser OFF / ON (no averaging, no subtraction).</div></div>
+      </div>
+
       <div class="grid g2">
         <div class="card p"><h2>Controls <small>sent to the Uno over USB</small></h2>
           <div class="ctl">
@@ -362,6 +367,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
           <tr><td>PC → Uno</td><td><code>!get</code> <code>!set key=value</code> <code>!reset</code></td><td>read / write / restore the settings above</td></tr>
           <tr><td>Uno → PC</td><td><code>H,…</code> <code>D,…</code></td><td>CSV header and one sample per second (same as the recorder)</td></tr>
           <tr><td>Uno → PC</td><td><code>S,mode,bright,calibrated,dhtFails,rxSat</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), brightness 0–255, health</td></tr>
+          <tr><td>Uno → PC</td><td><code>R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn</code></td><td>raw sensor values before calibration, averaging and laser OFF/ON subtraction</td></tr>
           <tr><td>Uno → PC</td><td><code>C,key=value,…</code></td><td>current settings</td></tr>
           <tr><td>Uno → PC</td><td><code># …</code></td><td>messages (state changes, calibration result, errors)</td></tr></table></div></div>
     </section>
@@ -578,6 +584,12 @@ function render() {
     rows.push(["Brightness", st ? `${(st.bright / 255 * 100).toFixed(0)} % (${st.bright}/255)` : "—"]);
   }
   $("health").innerHTML = rows.length ? rows.map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No data yet.</div>';
+
+  // raw sensor values (R line)
+  const rw = S.raw;
+  $("raw").innerHTML = rw ? [["DHT11 temperature", rw.temp == null ? "—" : rw.temp.toFixed(1) + " °C"], ["DHT11 humidity", rw.hum == null ? "—" : rw.hum.toFixed(1) + " %"],
+    ["LDR (ADC)", rw.ldr], ["Receiver, laser OFF (ADC)", rw.rxOff], ["Receiver, laser ON (ADC)", rw.rxOn], ["ON − OFF", rw.rxOn - rw.rxOff]]
+    .map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No raw line yet (re-upload the firmware).</div>';
 
   // controls
   const demo = !!(sm && sm.demo);
