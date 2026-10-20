@@ -4,7 +4,7 @@ dashboard runs without hardware.
 
 It speaks the SAME serial protocol as the board: it consumes the same commands
 (c d p i h and the "!get / !set key=value / !reset" lines) and emits the same
-lines (H, D, S, C and "# ..." messages). The dashboard cannot tell it apart
+lines (H, D, S, R, C and "# ..." messages). The dashboard cannot tell it apart
 from a real Uno.
 
 Behaviour is a line-by-line port of the firmware functions (same names in
@@ -113,6 +113,7 @@ class FogSim:
         self.world_t = 0.0     # virtual seconds, drives the "auto" scenario
         # ---- firmware globals ----
         self.temp_c = self.hum_rh = self.dew_spread = float("nan")
+        self.raw_t = self.raw_h = float("nan")
         self.dht_fails = 0
         self.light_raw = 0
         self.laser_sig = 0.0
@@ -379,11 +380,14 @@ class FogSim:
             r = self._read_dht11()
             if r:
                 c = self.cfgh
+                self.raw_t, self.raw_h = r
                 self.temp_c = r[0] * c["CAL_TEMP_GAIN"] + c["CAL_TEMP_OFFSET"]
                 self.hum_rh = clampf(r[1] * c["CAL_HUM_GAIN"] + c["CAL_HUM_OFFSET"], 1, 100)
                 self.dht_fails = 0
-            elif self.dht_fails < 250:
-                self.dht_fails += 1
+            else:
+                self.raw_t = self.raw_h = float("nan")
+                if self.dht_fails < 250:
+                    self.dht_fails += 1
         self.light_raw = int(clampf(round(1023 * self._ambient() + self.rnd.gauss(0, 3)), 0, 1023))
         ls = self.measure_laser()
         self.rx_sat = ls != ls
@@ -401,6 +405,9 @@ class FogSim:
             str(self.pred), str(self.state), str(self.faults), "1" if self.demo else "0"]))
         mode = self.current_mode()
         self._p(f"S,{mode},{self.brightness_for(mode)},{1 if self.calibrated else 0},{self.dht_fails},{1 if self.rx_sat else 0}")
+        off, on = self._adc_pair()
+        ldr = int(clampf(round(1023 * self._ambient() + self.rnd.gauss(0, 3)), 0, 1023))
+        self._p(f"R,{self.now},{fmt(self.raw_t, 1)},{fmt(self.raw_h, 1)},{ldr},{off},{on}")
 
     # ------------------------------------------------------------- serial input (same parser as handleSerial)
     def _handle_line(self, s):
