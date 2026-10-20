@@ -2,14 +2,14 @@
 <defs><marker id="beam" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#dc2626"/></marker><marker id="glow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#d97706"/></marker><marker id="flow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f59e0b"/></marker></defs>
 <rect width="2040" height="1580" fill="#ffffff"/>
 <text x="60" y="62" font-size="26" text-anchor="start" font-weight="bold" fill="#111827">Fog-Resilient Smart Road Lane Illumination — Wiring Diagram</text>
-<text x="60" y="90" font-size="13" text-anchor="start" font-weight="normal" fill="#4b5563">Arduino UNO · DHT11 · LDR · laser + phototransistor · 74HC595 with 8 guiding LEDs · LCD 16×2 (4-bit) · 2 buttons · status LED</text>
+<text x="60" y="90" font-size="13" text-anchor="start" font-weight="normal" fill="#4b5563">Arduino UNO · DHT11 · LDR · laser + phototransistor · 74HC595 with 8 guiding LEDs · LCD 16×2 (I2C) · 2 buttons · status LED</text>
 <rect x="700" y="180" width="300" height="920" rx="12" fill="#1f2937" stroke="#0f172a" stroke-width="2"/>
 <text x="700" y="162" font-size="16" text-anchor="start" font-weight="bold" fill="#111827">Arduino UNO R3</text>
 <rect x="760" y="560" width="180" height="116" rx="6" fill="#374151" stroke="#4b5563" stroke-width="1.4"/>
 <text x="850.0" y="606" font-size="13" text-anchor="middle" font-weight="bold" fill="#e5e7eb">ATmega328P</text>
 <text x="850.0" y="628" font-size="11" text-anchor="middle" font-weight="normal" fill="#9ca3af">16 MHz · 5 V</text>
 <text x="850.0" y="656" font-size="10" text-anchor="middle" font-weight="normal" fill="#9ca3af">D0/D1 = USB serial (free)</text>
-<text x="850.0" y="700" font-size="10" text-anchor="middle" font-weight="normal" fill="#9ca3af">D12 = free (SPI MISO)</text>
+<text x="850.0" y="700" font-size="10" text-anchor="middle" font-weight="normal" fill="#9ca3af">D6–D10, A3 = free</text>
 <circle cx="700" cy="240" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
 <text x="715" y="245" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D2</text>
 <circle cx="700" cy="480" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
@@ -21,34 +21,24 @@
 <circle cx="1000" cy="220" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
 <text x="985" y="225" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D13</text>
 <circle cx="1000" cy="304" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="309" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D11</text>
+<text x="985" y="309" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D12</text>
 <circle cx="1000" cy="388" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="393" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D10</text>
-<circle cx="1000" cy="472" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="477" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D9~</text>
+<text x="985" y="393" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D11</text>
 <circle cx="1000" cy="556" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="561" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D8</text>
+<text x="985" y="561" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">A4 SDA</text>
 <circle cx="1000" cy="640" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="645" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D7</text>
-<circle cx="1000" cy="724" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="729" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D6</text>
-<circle cx="1000" cy="808" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="813" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D5</text>
-<circle cx="1000" cy="892" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="897" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D4</text>
-<circle cx="1000" cy="976" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="981" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D3</text>
+<text x="985" y="645" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">A5 SCL</text>
 <circle cx="1000" cy="1060" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="985" y="1065" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">A5</text>
+<text x="985" y="1065" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D5</text>
 <circle cx="900" cy="180" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
 <text x="900" y="204" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">5V</text>
 <polyline points="900,180 900,140" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
 <rect x="886" y="123" width="28" height="17" rx="3" fill="#dc2626"/>
 <text x="900" y="136" font-size="10" text-anchor="middle" font-weight="bold" fill="#ffffff">5V</text>
 <circle cx="760" cy="1100" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="760" y="1084" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">A3</text>
+<text x="760" y="1084" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D3</text>
 <circle cx="880" cy="1100" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="880" y="1084" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">A4</text>
+<text x="880" y="1084" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D4</text>
 <circle cx="960" cy="1100" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
 <text x="960" y="1084" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">GND</text>
 <rect x="150" y="186" width="280" height="108" rx="8" fill="#ffffff" stroke="#6b7280" stroke-width="1.6"/>
@@ -210,17 +200,19 @@
 <polyline points="1000,220 1150,220" fill="none" stroke="#0f766e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="1075.0" y="208" font-size="10" text-anchor="middle" font-weight="bold" fill="#0f766e">CLOCK</text>
 <circle cx="1150" cy="304" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="309" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">DS <tspan fill="#9ca3af" font-weight="normal">14</tspan></text>
+<text x="1165" y="309" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">ST_CP <tspan fill="#9ca3af" font-weight="normal">12</tspan></text>
 <polyline points="1000,304 1150,304" fill="none" stroke="#0f766e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1075.0" y="292" font-size="10" text-anchor="middle" font-weight="bold" fill="#0f766e">DATA</text>
+<text x="1075.0" y="292" font-size="10" text-anchor="middle" font-weight="bold" fill="#0f766e">LATCH</text>
 <circle cx="1150" cy="388" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="393" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">ST_CP <tspan fill="#9ca3af" font-weight="normal">12</tspan></text>
+<text x="1165" y="393" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">DS <tspan fill="#9ca3af" font-weight="normal">14</tspan></text>
 <polyline points="1000,388 1150,388" fill="none" stroke="#0f766e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1075.0" y="376" font-size="10" text-anchor="middle" font-weight="bold" fill="#0f766e">LATCH</text>
+<text x="1075.0" y="376" font-size="10" text-anchor="middle" font-weight="bold" fill="#0f766e">DATA</text>
 <circle cx="1150" cy="472" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
 <text x="1165" y="477" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">OE <tspan fill="#9ca3af" font-weight="normal">13</tspan></text>
-<polyline points="1000,472 1150,472" fill="none" stroke="#0f766e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1075.0" y="460" font-size="10" text-anchor="middle" font-weight="bold" fill="#0f766e">PWM</text>
+<polyline points="1150,472 1100,472" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="1100,472 1100,492" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<g stroke="#111827" stroke-width="2.4"><line x1="1083" y1="492" x2="1117" y2="492"/><line x1="1090" y1="499" x2="1110" y2="499"/><line x1="1096" y1="506" x2="1104" y2="506"/></g>
+<text x="1075.0" y="460" font-size="10" text-anchor="middle" font-weight="bold" fill="#0f766e">OE to ground</text>
 <circle cx="1200" cy="170" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
 <text x="1200" y="194" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">VCC</text>
 <circle cx="1270" cy="170" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
@@ -374,80 +366,36 @@
 <text x="1790" y="246" font-size="10" text-anchor="start" font-weight="normal" fill="#4b5563">anode (+) → 470 Ω → Qn</text>
 <text x="1790" y="264" font-size="10" text-anchor="start" font-weight="normal" fill="#4b5563">cathode (−) → common ground</text>
 <text x="1790" y="300" font-size="10" text-anchor="start" font-weight="normal" fill="#4b5563">≈ 6 mA per LED · chip max 70 mA</text>
-<text x="1790" y="340" font-size="10" text-anchor="start" font-weight="bold" fill="#b45309">OE needs a 10 kΩ pull-up to 5 V —</text>
-<text x="1790" y="358" font-size="10" text-anchor="start" font-weight="normal" fill="#4b5563">it keeps the LEDs dark during reset</text>
+<text x="1790" y="340" font-size="10" text-anchor="start" font-weight="bold" fill="#b45309">OE (pin 13) tied to ground —</text>
+<text x="1790" y="358" font-size="10" text-anchor="start" font-weight="normal" fill="#4b5563">LEDs on/off only, no PWM dimming</text>
 <text x="1790" y="394" font-size="10" text-anchor="start" font-weight="normal" fill="#6b7280">Q7′ (pin 9) → DS of a second 595</text>
 <text x="1790" y="412" font-size="10" text-anchor="start" font-weight="normal" fill="#6b7280">if you ever want 16 LEDs</text>
 <text x="1790" y="486" font-size="11" text-anchor="start" font-weight="normal" fill="#4b5563">LED8 = end of the lane</text>
 <rect x="1150" y="540" width="750" height="550" rx="10" fill="#166534" stroke="#14532d" stroke-width="2"/>
-<text x="1176" y="576" font-size="15" text-anchor="start" font-weight="bold" fill="#ffffff">LCD 16×2 (HD44780) — 4-bit mode</text>
+<text x="1176" y="576" font-size="15" text-anchor="start" font-weight="bold" fill="#ffffff">LCD 16×2 + I2C backpack (PCF8574)</text>
 <rect x="1440" y="600" width="420" height="250" rx="6" fill="#1d4ed8" stroke="#1e3a8a" stroke-width="2"/>
 <text x="1470" y="700" font-size="27" fill="#e0f2fe" font-family="Consolas, monospace">DENSE FOG  94%</text>
 <text x="1470" y="790" font-size="27" fill="#e0f2fe" font-family="Consolas, monospace">Guide: SLOW DOWN</text>
 <circle cx="1150" cy="556" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="561" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D7 <tspan fill="#9ca3af" font-weight="normal">14</tspan></text>
+<text x="1165" y="561" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">SDA</text>
 <polyline points="1000,556 1150,556" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="1150" cy="640" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="645" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D6 <tspan fill="#9ca3af" font-weight="normal">13</tspan></text>
+<text x="1165" y="645" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">SCL</text>
 <polyline points="1000,640 1150,640" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="1150" cy="724" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="729" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D5 <tspan fill="#9ca3af" font-weight="normal">12</tspan></text>
-<polyline points="1000,724 1150,724" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="1150" cy="808" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="813" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">D4 <tspan fill="#9ca3af" font-weight="normal">11</tspan></text>
-<polyline points="1000,808 1150,808" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="1150" cy="892" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="897" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">E <tspan fill="#9ca3af" font-weight="normal">6</tspan></text>
-<polyline points="1000,892 1150,892" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="1150" cy="976" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1165" y="981" font-size="12.5" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">RS <tspan fill="#9ca3af" font-weight="normal">4</tspan></text>
-<polyline points="1000,976 1150,976" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1075.0" y="544" font-size="10" text-anchor="middle" font-weight="bold" fill="#2563eb">4-bit data bus + RS / E</text>
+<text x="1075.0" y="544" font-size="10" text-anchor="middle" font-weight="bold" fill="#2563eb">I2C: SDA + SCL</text>
+<text x="1176" y="600" font-size="11" text-anchor="start" font-weight="normal" fill="#bbf7d0">I2C address 0x27 (0x3F on some boards)</text>
 <circle cx="1900" cy="900" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1885" y="905" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace"><tspan fill="#9ca3af" font-weight="normal">2</tspan> VDD</text>
+<text x="1885" y="905" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">VCC</text>
 <polyline points="1900,900 1950,900" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
 <polyline points="1950,900 1950,876" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
 <rect x="1936" y="859" width="28" height="17" rx="3" fill="#dc2626"/>
 <text x="1950" y="872" font-size="10" text-anchor="middle" font-weight="bold" fill="#ffffff">5V</text>
-<circle cx="1900" cy="1000" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1885" y="1005" font-size="12.5" text-anchor="end" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace"><tspan fill="#9ca3af" font-weight="normal">15</tspan> A</text>
-<polyline points="1900,1000 1990,1000" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<polyline points="1990,906 1990,923.0" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M1990,923.0 l7,5 l-14,10 l14,10 l-14,10 l14,10 l-14,10 l7,5" fill="none" stroke="#111827" stroke-width="2.2"/>
-<polyline points="1990,983.0 1990,1000" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1970.0" y="957.0" font-size="11" text-anchor="end" font-weight="bold" fill="#111827">220 Ω</text>
-<polyline points="1990,906 1990,884" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="1976" y="867" width="28" height="17" rx="3" fill="#dc2626"/>
-<text x="1990" y="880" font-size="10" text-anchor="middle" font-weight="bold" fill="#ffffff">5V</text>
-<text x="1946" y="1028" font-size="10" text-anchor="middle" font-weight="normal" fill="#4b5563">backlight</text>
-<circle cx="1300" cy="1090" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1300" y="1074" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">VSS <tspan fill="#bbf7d0" font-weight="normal">1</tspan></text>
-<circle cx="1450" cy="1090" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1450" y="1074" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">V0 <tspan fill="#bbf7d0" font-weight="normal">3</tspan></text>
-<circle cx="1600" cy="1090" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1600" y="1074" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">RW <tspan fill="#bbf7d0" font-weight="normal">5</tspan></text>
 <circle cx="1750" cy="1090" r="5" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.4"/>
-<text x="1750" y="1074" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">K <tspan fill="#bbf7d0" font-weight="normal">16</tspan></text>
-<polyline points="1300,1090 1300,1280" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<polyline points="1600,1090 1600,1280" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<polyline points="1750,1090 1750,1280" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<polyline points="1300,1280 1750,1280" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="1600" cy="1280" r="4.5" fill="#111827"/>
-<circle cx="1750" cy="1280" r="4.5" fill="#111827"/>
-<circle cx="1380" cy="1280" r="4.5" fill="#111827"/>
-<polyline points="1380,1280 1380,1300" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<g stroke="#111827" stroke-width="2.4"><line x1="1363" y1="1300" x2="1397" y2="1300"/><line x1="1370" y1="1307" x2="1390" y2="1307"/><line x1="1376" y1="1314" x2="1384" y2="1314"/></g>
-<polyline points="1450,1090 1450,1220" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<line x1="1450" y1="1220" x2="1544" y2="1220" stroke="#111827" stroke-width="2.2" marker-end="url(#glow)"/>
-<polyline points="1560,1150 1560,1185.0" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M1560,1185.0 l7,5 l-14,10 l14,10 l-14,10 l14,10 l-14,10 l7,5" fill="none" stroke="#111827" stroke-width="2.2"/>
-<polyline points="1560,1245.0 1560,1280" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1580.0" y="1219.0" font-size="11" text-anchor="start" font-weight="bold" fill="#111827">10 kΩ</text>
-<polyline points="1560,1150 1560,1126" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="1546" y="1109" width="28" height="17" rx="3" fill="#dc2626"/>
-<text x="1560" y="1122" font-size="10" text-anchor="middle" font-weight="bold" fill="#ffffff">5V</text>
-<circle cx="1560" cy="1280" r="4.5" fill="#111827"/>
-<text x="1560" y="1330" font-size="10" text-anchor="middle" font-weight="normal" fill="#4b5563">contrast pot — turn this if the screen stays blank</text>
+<text x="1750" y="1074" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#ffffff" font-family="Consolas, monospace">GND</text>
+<polyline points="1750,1090 1750,1180" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="1750,1180 1750,1200" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<g stroke="#111827" stroke-width="2.4"><line x1="1733" y1="1200" x2="1767" y2="1200"/><line x1="1740" y1="1207" x2="1760" y2="1207"/><line x1="1746" y1="1214" x2="1754" y2="1214"/></g>
+<text x="1750" y="1230" font-size="10" text-anchor="middle" font-weight="normal" fill="#4b5563">contrast: small trimmer on the backpack</text>
 <rect x="60" y="1130" width="600" height="180" rx="10" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.4"/>
 <text x="86" y="1162" font-size="12" text-anchor="start" font-weight="bold" fill="#111827">LEGEND</text>
 <rect x="86" y="1176" width="28" height="17" rx="3" fill="#dc2626"/>
@@ -468,13 +416,13 @@
 <polyline points="364,1270 390,1270" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="398" y="1274" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">Laser drive (A2)</text>
 <polyline points="86,1288 112,1288" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="120" y="1292" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">Buttons (A3 / A4)</text>
+<text x="120" y="1292" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">Buttons (D3 / D4)</text>
 <polyline points="364,1288 390,1288" fill="none" stroke="#ea580c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="398" y="1292" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">Status LED (A5)</text>
+<text x="398" y="1292" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">Status LED (D5)</text>
 <polyline points="86,1306 112,1306" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="120" y="1310" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">LCD bus (D3–D8)</text>
+<text x="120" y="1310" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">LCD I2C (A4 / A5)</text>
 <polyline points="364,1306 390,1306" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="398" y="1310" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">74HC595 (D9–D13)</text>
+<text x="398" y="1310" font-size="11" text-anchor="start" font-weight="normal" fill="#111827">74HC595 (D11–D13)</text>
 <text x="60" y="1382" font-size="13" text-anchor="start" font-weight="bold" fill="#111827">PHYSICAL PLACEMENT — three LEDs travel along the lane, slower in dense fog</text>
 <rect x="60" y="1398" width="560" height="142" rx="10" fill="#374151" stroke="#1f2937" stroke-width="2"/>
 <line x1="80" y1="1428" x2="600" y2="1428" stroke="#e5e7eb" stroke-width="3" stroke-dasharray="22 14"/>
@@ -501,12 +449,12 @@
 <text x="686" y="1426" font-size="12" text-anchor="start" font-weight="bold" fill="#111827">POWER &amp; NOTES</text>
 <text x="686" y="1450" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• Everything runs from the USB 5 V rail — about 165 mA in total.</text>
 <text x="686" y="1469" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• 74HC595: VCC and MR to 5 V, GND to ground, 100 nF across the supply pins,</text>
-<text x="686" y="1488" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">   and 10 kΩ from OE to 5 V so the LEDs stay dark during reset and upload.</text>
+<text x="686" y="1488" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">   and OE (pin 13) straight to ground. Data, latch and clock are plain D11–D13.</text>
 <text x="686" y="1507" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• Each LED draws ≈ 6 mA (470 Ω); one 595 carries 70 mA in total. For brighter</text>
 <text x="686" y="1526" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">   road LEDs use a TPIC6B595 or add ULN2803 drivers.</text>
-<text x="1330" y="1450" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• LCD: RW to ground (write only), V0 to the 10 kΩ contrast pot, backlight via 220 Ω.</text>
+<text x="1330" y="1450" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• LCD: I2C backpack — SDA to A4, SCL to A5, VCC 5 V, GND. Blank screen: turn the trimmer.</text>
 <text x="1330" y="1469" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• The laser is switched by Q1, never straight from a pin. Keep the phototransistor</text>
 <text x="1330" y="1488" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">   in a black tube, aligned with the beam, 30–50 cm away.</text>
-<text x="1330" y="1507" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• D12 (SPI MISO) and D0/D1 (USB serial, used for AI data recording) stay free.</text>
+<text x="1330" y="1507" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• D6–D10, A3 and D0/D1 (USB serial, AI data recording) stay free.</text>
 <text x="1330" y="1526" font-size="11" text-anchor="start" font-weight="normal" fill="#374151">• Every ground symbol is the same net — join all grounds on the breadboard.</text>
 </svg>

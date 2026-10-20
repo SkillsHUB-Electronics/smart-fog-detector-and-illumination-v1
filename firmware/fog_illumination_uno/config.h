@@ -8,25 +8,20 @@
 // D0/D1 are the USB serial port: leave them free (used for AI data recording).
 #define PIN_DHT        2    // DHT11 data (10k pull-up to 5V if using a bare sensor)
 
-#define PIN_LCD_RS     3    // LCD 16x2 (HD44780) in 4-bit mode, RW tied to GND
-#define PIN_LCD_E      4
-#define PIN_LCD_D4     5
-#define PIN_LCD_D5     6
-#define PIN_LCD_D6     7
-#define PIN_LCD_D7     8
+// LCD 16x2 on an I2C backpack (PCF8574): SDA = A4, SCL = A5 (fixed hardware pins on the Uno).
+#define LCD_I2C_ADDR   0x27 // try 0x3F if the screen stays blank
 
-#define PIN_595_OE     9    // 74HC595 pin 13 (OE, active LOW) — PWM = LED brightness
-#define PIN_595_LATCH  10   // 74HC595 pin 12 (ST_CP)
-// 74HC595 pin 14 (DS)    -> D11 (hardware SPI MOSI)
-// 74HC595 pin 11 (SH_CP) -> D13 (hardware SPI SCK)
-// D12 (SPI MISO) stays unused.
+// 74HC595 (bit-banged with shiftOut, OE pin 13 tied to GND = LEDs always enabled, no brightness PWM)
+#define PIN_595_CLOCK  13   // 74HC595 pin 11 (SH_CP)
+#define PIN_595_LATCH  12   // 74HC595 pin 12 (ST_CP)
+#define PIN_595_DATA   11   // 74HC595 pin 14 (DS)
 
 #define PIN_LDR        A0   // LDR from 5V to A0, 10k from A0 to GND  (brighter = higher)
 #define PIN_RX         A1   // Phototransistor: collector 5V, emitter A1, 10k to GND
 #define PIN_LASER      A2   // Laser module through NPN transistor (HIGH = laser on)
-#define PIN_BTN_CAL    A3   // Push button to GND (internal pull-up). Hold 2 s = calibrate
-#define PIN_BTN_PAGE   A4   // Push button to GND. Short = next LCD page, hold 2 s = demo mode
-#define PIN_STATUS     A5   // Status / fault LED (+330 ohm)
+#define PIN_BTN_CAL    3    // Push button to GND (internal pull-up). Hold 2 s = calibrate
+#define PIN_BTN_PAGE   4    // Push button to GND. Short = next LCD page, hold 2 s = demo mode
+#define PIN_STATUS     5    // Status / fault LED (+330 ohm)
 
 // ---------------- Guiding lights (74HC595) ---------------------------------
 #define NUM_SHIFT_REGS   1  // 1 chip = 8 LEDs, 2 chained chips = 16 LEDs

@@ -6,18 +6,18 @@
 //            differential measurement so sunlight does not matter)
 //  Brain   : edge AI (softmax logistic regression, 3 classes) + fail-safe rules
 //  Output  : chasing guiding lights through a 74HC595 (OE PWM = brightness),
-//            LCD 16x2 (4-bit parallel), status LED, CSV telemetry over USB
+//            LCD 16x2 (I2C), status LED, CSV telemetry over USB
 //
-//  Libraries: SPI, EEPROM, LiquidCrystal — all built into the Arduino IDE.
+//  Libraries: EEPROM (built in) and LiquidCrystal_I2C (Library Manager).
 //  The DHT11 is read by our own code, so no extra library is needed.
 //
 //  Serial commands (115200 baud, Serial Monitor "No line ending" or any):
 //    c = calibrate (clear air)   d = demo mode on/off   p = next LCD page
 //    i = info (model + calibration)   h = help
 // ============================================================================
-#include <SPI.h>
 #include <EEPROM.h>
-#include <LiquidCrystal.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include <math.h>
 #include "config.h"
 #include "model_weights.h"
@@ -25,7 +25,7 @@
 
 #define FW_VERSION "1.0.0"
 
-LiquidCrystal lcd(PIN_LCD_RS, PIN_LCD_E, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
+LiquidCrystal_I2C lcd(LCD_I2C_ADDR, 16, 2);
 
 enum { ST_CLEAR = 0, ST_LIGHT = 1, ST_DENSE = 2, MODE_FAULT = 3 };
 static const char *const STATE_NAME[4] = {"CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"};
@@ -71,7 +71,6 @@ uint32_t demoSince = 0;
 uint8_t chasePos = 0;
 uint32_t lastStep = 0;
 uint16_t shownPattern = 0xFFFF;
-int shownBright = -1;
 uint8_t lcdPage = 0;
 uint32_t lastPageFlip = 0, manualUntil = 0;
 char msg0[17] = "", msg1[17] = "";
@@ -418,18 +417,13 @@ void sampleAndDecide(uint32_t now) {
 // ============================================================================
 void writePattern(uint16_t pattern, uint8_t bright) {
   if (pattern != shownPattern) {
-    SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
     digitalWrite(PIN_595_LATCH, LOW);
     // The first byte sent ends up in the LAST chip of the chain.
-    for (int8_t chip = NUM_SHIFT_REGS - 1; chip >= 0; chip--) SPI.transfer((uint8_t)(pattern >> (8 * chip)));
+    for (int8_t chip = NUM_SHIFT_REGS - 1; chip >= 0; chip--) shiftOut(PIN_595_DATA, PIN_595_CLOCK, MSBFIRST, (uint8_t)(pattern >> (8 * chip)));
     digitalWrite(PIN_595_LATCH, HIGH);
-    SPI.endTransaction();
     shownPattern = pattern;
   }
-  if (bright != shownBright) {
-    analogWrite(PIN_595_OE, 255 - bright);  // OE is active LOW
-    shownBright = bright;
-  }
+  (void)bright;  // no OE/PWM line any more: LEDs are fully on or off
 }
 
 // Fail-safe: a lost DHT11 (common in fog) is only fatal if the laser cannot
@@ -608,20 +602,20 @@ void handleSerial(uint32_t now) {
 //  Setup & loop
 // ============================================================================
 void setup() {
-  pinMode(PIN_595_OE, OUTPUT);
-  digitalWrite(PIN_595_OE, HIGH);  // LEDs off until the first pattern is written
   pinMode(PIN_595_LATCH, OUTPUT);
+  pinMode(PIN_595_DATA, OUTPUT);
+  pinMode(PIN_595_CLOCK, OUTPUT);
   pinMode(PIN_LASER, OUTPUT);
   digitalWrite(PIN_LASER, LOW);
   pinMode(PIN_STATUS, OUTPUT);
   pinMode(PIN_BTN_CAL, INPUT_PULLUP);
   pinMode(PIN_BTN_PAGE, INPUT_PULLUP);
   pinMode(PIN_DHT, INPUT_PULLUP);
-  SPI.begin();
   writePattern(0, 0);
 
   Serial.begin(SERIAL_BAUD);
-  lcd.begin(16, 2);
+  lcd.init();
+  lcd.backlight();
   showMessage("Fog Lane Light", "v" FW_VERSION " booting", 1500);
 
   // Lamp test: sweep every LED once
