@@ -1,6 +1,9 @@
 """
-Train the edge-AI model (softmax logistic regression, 3 classes) from data
-recorded with tools/record_data.py, and compare the sensors.
+Train the edge-AI models (softmax logistic regression) from data recorded with
+tools/record_data.py, and compare the sensors:
+  - fog model, 3 classes (clear / light_fog / dense_fog), 5 features, column "label"
+  - light model, 3 classes (day / twilight / night), light feature only, column "light_cond"
+    (trained when every light class has >= 5 rows, otherwise the installed weights are kept)
 
   python tools/train_model.py              train on all 5 features, show the test result
   python tools/train_model.py --compare    also compare single sensors / combinations
@@ -15,10 +18,14 @@ import glob
 import math
 import os
 import random
+import re
 from collections import Counter, defaultdict
 
 FEATURES = ["temp", "humidity", "dew_spread", "light", "attenuation"]
 CLASSES = ["clear", "light_fog", "dense_fog"]
+LIGHT_CLASSES = ["day", "twilight", "night"]
+LIGHT_FEATURES = ["light"]
+LIGHT_DEFAULT = ([30.0, 0.0, -30.0], [-15.0, 0.0, 3.6])  # same hand-tuned values as model_weights.h
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE, "data")
 FIRMWARE_HEADER = os.path.join(BASE, "firmware", "fog_illumination_uno", "model_weights.h")
@@ -36,21 +43,22 @@ COMPARE_SETS = [
 ]
 
 
-def load(pattern):
+def load(pattern, col="label", classes=CLASSES, features=FEATURES, quiet=False):
     X, y, notes = [], [], []
     files = sorted(glob.glob(pattern))
     for path in files:
         with open(path, encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
-                if row.get("label") not in CLASSES:
+                if row.get(col) not in classes:
                     continue
                 try:
-                    X.append([float(row["f_" + f]) for f in FEATURES])
+                    X.append([float(row["f_" + f]) for f in features])
                 except (KeyError, ValueError):
                     continue
-                y.append(CLASSES.index(row["label"]))
+                y.append(classes.index(row[col]))
                 notes.append(row.get("note") or "-")
-        print(f"  {os.path.relpath(path, BASE)}")
+        if not quiet:
+            print(f"  {os.path.relpath(path, BASE)}")
     return X, y, notes
 
 
@@ -65,9 +73,9 @@ def predict_proba(W, B, x):
     return softmax([b + sum(w * v for w, v in zip(Wk, x)) for Wk, b in zip(W, B)])
 
 
-def train(X, y, epochs=800, lr=0.1, l2=0.0005):
+def train(X, y, epochs=800, lr=0.1, l2=0.0005, K=len(CLASSES)):
     """Full-batch gradient descent with the Adam optimiser."""
-    n, d, K = len(X), len(X[0]), len(CLASSES)
+    n, d = len(X), len(X[0])
     cnt = Counter(y)
     cw = {k: n / (K * cnt[k]) for k in cnt}  # balance the classes
     W = [[0.0] * d for _ in range(K)]
@@ -99,8 +107,7 @@ def train(X, y, epochs=800, lr=0.1, l2=0.0005):
     return W, B
 
 
-def confusion(W, B, X, y):
-    K = len(CLASSES)
+def confusion(W, B, X, y, K=len(CLASSES)):
     m = [[0] * K for _ in range(K)]
     for xi, yi in zip(X, y):
         p = predict_proba(W, B, xi)
@@ -149,17 +156,17 @@ def subset(X, cols):
     return [[x[i] for i in ids] for x in X]
 
 
-def print_report(m, title):
+def print_report(m, title, classes=CLASSES):
     acc, rec, prec = scores(m)
     print(f"\n{title}")
     print(f"  Accuracy: {acc * 100:.1f}%")
     print("  Confusion matrix (rows = true, columns = predicted):")
-    print("               " + "".join(f"{c:>11}" for c in CLASSES))
-    for k, c in enumerate(CLASSES):
+    print("               " + "".join(f"{c:>11}" for c in classes))
+    for k, c in enumerate(classes):
         print(f"  {c:>11}  " + "".join(f"{v:>11}" for v in m[k]))
-    for k, c in enumerate(CLASSES):
+    for k, c in enumerate(classes):
         print(f"  {c:>11}: recall {rec[k] * 100:5.1f}%   precision {prec[k] * 100:5.1f}%")
-    if rec[2] < 0.9:
+    if classes is CLASSES and rec[2] < 0.9:
         print("  WARNING: dense-fog recall < 90 % - record more dense-fog data or check the laser alignment.")
 
 
@@ -213,6 +220,20 @@ def compare(X, y, notes, tr, te):
     print(f"\nSaved table to {os.path.relpath(out_csv, BASE)} (open in Excel for the report).")
 
 
+def installed_light():
+    """Light weights currently in the firmware header (kept when there is no light data), else the defaults."""
+    try:
+        with open(FIRMWARE_HEADER, encoding="utf-8") as fh:
+            txt = fh.read()
+        w = [float(v) for v in re.findall(r"-?[\d.]+(?=f)", re.search(r"LIGHT_W\[[^\]]*\]\s*=\s*\{(.*?)\};", txt, re.S).group(1))]
+        b = [float(v) for v in re.findall(r"-?[\d.]+(?=f)", re.search(r"LIGHT_B\[[^\]]*\]\s*=\s*\{(.*?)\};", txt, re.S).group(1))]
+        if len(w) == len(b) == len(LIGHT_CLASSES):
+            return w, b
+    except (OSError, AttributeError, ValueError):
+        pass
+    return list(LIGHT_DEFAULT[0]), list(LIGHT_DEFAULT[1])
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", default=os.path.join(DATA_DIR, "train_*.csv"))
@@ -246,6 +267,22 @@ def main():
     if args.compare:
         compare(X, y, notes, tr, te)
 
+    # Light model (day / twilight / night) from the rows that carry a light_cond label
+    LW, LB = installed_light()
+    light_note = "kept the installed light weights (no light_cond data)"
+    XL, yL, _ = load(args.data, "light_cond", LIGHT_CLASSES, LIGHT_FEATURES, quiet=True)
+    lcnt = Counter(yL)
+    if all(lcnt[k] >= 5 for k in range(len(LIGHT_CLASSES))):
+        ltr, lte = split(yL)
+        W1, B1 = train([XL[i] for i in ltr], [yL[i] for i in ltr], K=len(LIGHT_CLASSES))
+        print_report(confusion(W1, B1, [XL[i] for i in lte], [yL[i] for i in lte], len(LIGHT_CLASSES)),
+                     f"Light model test result on {len(lte)} unseen rows (20 %):", LIGHT_CLASSES)
+        W1, B1 = train(XL, yL, K=len(LIGHT_CLASSES))
+        LW, LB = [w[0] for w in W1], B1
+        light_note = "trained on " + ", ".join(f"{c}={lcnt[k]}" for k, c in enumerate(LIGHT_CLASSES))
+    else:
+        print("\nLight model: need >= 5 rows of day, twilight and night (light_cond column); " + light_note + ".")
+
     # Final model on ALL data for the firmware
     W, B = train(X, y)
     rows = ",\n".join("  {" + ", ".join(f"{v:.4f}f" for v in Wk) + "}" for Wk in W)
@@ -258,7 +295,11 @@ def main():
         f"#define MODEL_N_FEATURES {len(FEATURES)}\n"
         f"#define MODEL_N_CLASSES {len(CLASSES)}\n"
         "static const float MODEL_W[MODEL_N_CLASSES][MODEL_N_FEATURES] = {\n" + rows + ",\n};\n"
-        "static const float MODEL_B[MODEL_N_CLASSES] = {" + ", ".join(f"{b:.4f}f" for b in B) + "};\n"
+        "static const float MODEL_B[MODEL_N_CLASSES] = {" + ", ".join(f"{b:.4f}f" for b in B) + "};\n\n"
+        f"// Light-condition model (softmax on the light feature only): 0 = DAY, 1 = TWILIGHT, 2 = NIGHT. {light_note}\n"
+        f"#define LIGHT_N_CLASSES {len(LIGHT_CLASSES)}\n"
+        "static const float LIGHT_W[LIGHT_N_CLASSES] = {" + ", ".join(f"{w:.4f}f" for w in LW) + "};\n"
+        "static const float LIGHT_B[LIGHT_N_CLASSES] = {" + ", ".join(f"{b:.4f}f" for b in LB) + "};\n"
     )
     out = FIRMWARE_HEADER if args.install else os.path.join(DATA_DIR, "model_weights.h")
     os.makedirs(os.path.dirname(out), exist_ok=True)

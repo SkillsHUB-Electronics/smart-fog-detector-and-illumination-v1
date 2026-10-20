@@ -32,6 +32,7 @@ TRAIN = os.path.join(BASE, "tools", "train_model.py")
 FQBN = "arduino:avr:uno"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 CLASSES = ["clear", "light_fog", "dense_fog"]
+LIGHT_CLASSES = ["day", "twilight", "night"]
 
 # key -> (define name, min, max, default, is_int). Same defaults as calibration.h.
 CAL_FIELDS = {
@@ -249,22 +250,27 @@ def start_upload(hub, port="", compile_only=False):
 # ----------------------------------------------------------------------------- learning
 def datasets(kind="train"):
     """Recorded CSV files (train_*.csv, or sim_*.csv) with the number of rows per label."""
-    files, totals = [], {c: 0 for c in CLASSES}
+    files, totals, ltotals = [], {c: 0 for c in CLASSES}, {c: 0 for c in LIGHT_CLASSES}
     for p in sorted(glob.glob(os.path.join(DATA_DIR, f"{kind}_*.csv")), reverse=True):
-        counts, notes = {c: 0 for c in CLASSES}, set()
+        counts, lcounts, notes = {c: 0 for c in CLASSES}, {c: 0 for c in LIGHT_CLASSES}, set()
         try:
             with open(p, encoding="utf-8") as fh:
                 for row in csv.DictReader(fh):
                     if row.get("label") in counts:
                         counts[row["label"]] += 1
                         notes.add(row.get("note") or "-")
+                    if row.get("light_cond") in lcounts:
+                        lcounts[row["light_cond"]] += 1
         except OSError:
             continue
         for c in CLASSES:
             totals[c] += counts[c]
-        files.append({"name": os.path.basename(p), "counts": counts, "notes": sorted(notes)})
+        for c in LIGHT_CLASSES:
+            ltotals[c] += lcounts[c]
+        files.append({"name": os.path.basename(p), "counts": counts, "light": lcounts, "notes": sorted(notes)})
     return {"kind": kind, "files": files, "totals": totals, "rows": sum(totals.values()),
-            "ready": all(totals[c] >= 5 for c in CLASSES)}
+            "ready": all(totals[c] >= 5 for c in CLASSES),
+            "lightTotals": ltotals, "lightReady": all(ltotals[c] >= 5 for c in LIGHT_CLASSES)}
 
 
 def model_info():
@@ -304,6 +310,22 @@ def parse_report(text):
         r["drop"].append({"feature": m.group(1), "acc": float(m.group(2)), "loss": float(m.group(3))})
     m = re.search(r"WARNING: (.+)", text)
     r["warning"] = m.group(1).strip() if m else ""
+    # light model (day / twilight / night): its own report follows the fog one
+    head, sep, ltext = text.partition("Light model test result on ")
+    if sep:
+        lr = {"rows": None, "accuracy": None, "confusion": [], "recall": {}, "precision": {}}
+        m = re.match(r"(\d+) unseen rows", ltext)
+        lr["rows"] = int(m.group(1)) if m else None
+        m = re.search(r"Accuracy:\s*([\d.]+)%", ltext)
+        lr["accuracy"] = float(m.group(1)) if m else None
+        for cls in LIGHT_CLASSES:
+            m = re.search(rf"^\s*{cls}\s+(\d+)\s+(\d+)\s+(\d+)\s*$", ltext, re.M)
+            if m:
+                lr["confusion"].append([int(x) for x in m.groups()])
+            m = re.search(rf"^\s*{cls}:\s*recall\s*([\d.]+)%\s*precision\s*([\d.]+)%", ltext, re.M)
+            if m:
+                lr["recall"][cls], lr["precision"][cls] = float(m.group(1)), float(m.group(2))
+        r["light"] = lr
     return r
 
 
