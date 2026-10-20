@@ -45,10 +45,10 @@ struct CalData {
 // config.h holds the defaults; "!set key=value" over USB serial overrides them.
 struct Cfg {
   uint16_t magic;
-  uint8_t brightLight, brightDense, nightPct, nightScale, confirmUp, confirmDown;
+  uint8_t confirmUp, confirmDown;
   uint16_t stepLight, stepDense;
 };
-#define CFG_MAGIC 0xF06B
+#define CFG_MAGIC 0xF06C  // bumped when the struct changed: old EEPROM contents are discarded
 #define CFG_ADDR  16  // CalData lives at 0
 Cfg cfg;
 
@@ -90,6 +90,18 @@ Button btnPage = {PIN_BTN_PAGE, false, false, 0};
 // ============================================================================
 float clampf(float x, float lo, float hi) { return x < lo ? lo : (x > hi ? hi : x); }
 
+// Waiting inside the sensor routines would freeze the chase for ~60 ms every sample,
+// so the lights keep running during the waits (holdLights stops that during calibration).
+void updateLights(uint32_t now);
+bool holdLights = false;
+
+void waitMs(uint16_t ms) {
+  uint32_t t0 = millis();
+  do {
+    if (!holdLights) updateLights(millis());
+  } while (millis() - t0 < ms);
+}
+
 void lcdLine(uint8_t row, const char *s) {
   lcd.setCursor(0, row);
   uint8_t i = 0;
@@ -127,7 +139,7 @@ bool readDHT11(float &t, float &h) {
   uint8_t d[5] = {0, 0, 0, 0, 0};
   pinMode(PIN_DHT, OUTPUT);
   digitalWrite(PIN_DHT, LOW);
-  delay(20);  // start signal: at least 18 ms low
+  waitMs(20);  // start signal: at least 18 ms low
   pinMode(PIN_DHT, INPUT_PULLUP);
   // Sensor answers: 80 us low, 80 us high, then 40 bits
   if (!waitLevel(LOW, 200) || !waitLevel(HIGH, 150) || !waitLevel(LOW, 150)) return false;
@@ -171,10 +183,10 @@ float measureLaser() {
   uint8_t valid = 0;
   for (uint8_t k = 0; k < LASER_CYCLES; k++) {
     digitalWrite(PIN_LASER, LOW);
-    delay(LASER_SETTLE_MS);
+    waitMs(LASER_SETTLE_MS);
     int off = readAvg(PIN_RX, 8);
     digitalWrite(PIN_LASER, HIGH);
-    delay(LASER_SETTLE_MS);
+    waitMs(LASER_SETTLE_MS);
     int on = readAvg(PIN_RX, 8);
     if (off >= RX_SAT_ADC || on >= RX_SAT_ADC) continue;
     total += on - off;
@@ -193,10 +205,6 @@ void loadCalibration() {
 
 void cfgDefaults() {
   cfg.magic = CFG_MAGIC;
-  cfg.brightLight = BRIGHT_LIGHT;
-  cfg.brightDense = BRIGHT_DENSE;
-  cfg.nightPct = (uint8_t)(NIGHT_LIGHT * 100 + 0.5);
-  cfg.nightScale = NIGHT_SCALE;
   cfg.confirmUp = CONFIRM_UP;
   cfg.confirmDown = CONFIRM_DOWN;
   cfg.stepLight = STEP_MS_LIGHT;
@@ -206,18 +214,14 @@ void cfgDefaults() {
 void loadCfg() {
   Cfg c;
   EEPROM.get(CFG_ADDR, c);
-  bool ok = c.magic == CFG_MAGIC && c.nightPct <= 100 && c.nightScale <= 100 &&
+  bool ok = c.magic == CFG_MAGIC &&
             c.confirmUp >= 1 && c.confirmUp <= 20 && c.confirmDown >= 1 && c.confirmDown <= 20 &&
             c.stepLight >= 50 && c.stepLight <= 1000 && c.stepDense >= 50 && c.stepDense <= 2000;
   if (ok) cfg = c; else cfgDefaults();
 }
 
 void printCfg() {
-  Serial.print(F("C,brightLight=")); Serial.print(cfg.brightLight);
-  Serial.print(F(",brightDense=")); Serial.print(cfg.brightDense);
-  Serial.print(F(",nightPct=")); Serial.print(cfg.nightPct);
-  Serial.print(F(",nightScale=")); Serial.print(cfg.nightScale);
-  Serial.print(F(",confirmUp=")); Serial.print(cfg.confirmUp);
+  Serial.print(F("C,confirmUp=")); Serial.print(cfg.confirmUp);
   Serial.print(F(",confirmDown=")); Serial.print(cfg.confirmDown);
   Serial.print(F(",stepLight=")); Serial.print(cfg.stepLight);
   Serial.print(F(",stepDense=")); Serial.println(cfg.stepDense);
@@ -235,11 +239,7 @@ void printCal() {
 
 // Values are clamped to the same limits the dashboard shows.
 bool setCfg(const char *k, long v) {
-  if (!strcmp(k, "brightLight")) cfg.brightLight = constrain(v, 0, 255);
-  else if (!strcmp(k, "brightDense")) cfg.brightDense = constrain(v, 0, 255);
-  else if (!strcmp(k, "nightPct")) cfg.nightPct = constrain(v, 0, 100);
-  else if (!strcmp(k, "nightScale")) cfg.nightScale = constrain(v, 0, 100);
-  else if (!strcmp(k, "confirmUp")) cfg.confirmUp = constrain(v, 1, 20);
+  if (!strcmp(k, "confirmUp")) cfg.confirmUp = constrain(v, 1, 20);
   else if (!strcmp(k, "confirmDown")) cfg.confirmDown = constrain(v, 1, 20);
   else if (!strcmp(k, "stepLight")) cfg.stepLight = constrain(v, 50, 1000);
   else if (!strcmp(k, "stepDense")) cfg.stepDense = constrain(v, 50, 2000);
@@ -247,9 +247,9 @@ bool setCfg(const char *k, long v) {
   return true;
 }
 
-void calibrate() {
+void calibrateRun() {
   showMessage("Calibrating...", "Keep air clear", 60000);
-  writePattern(0, 0);
+  writePattern(0);
   float s = 0, lo = 1e9, hi = -1e9;
   for (uint8_t i = 0; i < 8; i++) {
     float v = measureLaser();
@@ -293,6 +293,13 @@ void calibrate() {
   Serial.print(F("# CAL OK: baseline = ")); Serial.println(baseline, 1);
   sprintf(b, "Baseline %d", (int)baseline);
   showMessage("CAL OK", b, 2500);
+}
+
+// LEDs stay off while the laser is measured, so the baseline is not disturbed.
+void calibrate() {
+  holdLights = true;
+  calibrateRun();
+  holdLights = false;
 }
 
 // ============================================================================
@@ -374,13 +381,11 @@ void printSample() {
 }
 
 uint8_t currentMode();
-uint8_t brightnessFor(uint8_t mode);
 
-// Extra line for the dashboard (the recorder ignores it): S,mode,bright,calibrated,dhtFails,rxSat
+// Extra line for the dashboard (the recorder ignores it): S,mode,calibrated,dhtFails,rxSat
 void printStatus() {
   uint8_t mode = currentMode();
   Serial.print(F("S,")); Serial.print(mode);
-  Serial.print(','); Serial.print(brightnessFor(mode));
   Serial.print(','); Serial.print(calibrated ? 1 : 0);
   Serial.print(','); Serial.print(dhtFails);
   Serial.print(','); Serial.println(rxSat ? 1 : 0);
@@ -394,10 +399,10 @@ float rawT = NAN, rawH = NAN;
 void printRaw() {
   int ldr = analogRead(PIN_LDR);
   digitalWrite(PIN_LASER, LOW);
-  delay(LASER_SETTLE_MS);
+  waitMs(LASER_SETTLE_MS);
   int off = analogRead(PIN_RX);
   digitalWrite(PIN_LASER, HIGH);
-  delay(LASER_SETTLE_MS);
+  waitMs(LASER_SETTLE_MS);
   int on = analogRead(PIN_RX);
   digitalWrite(PIN_LASER, LOW);
   Serial.print(F("R,")); Serial.print(millis());
@@ -442,7 +447,7 @@ void sampleAndDecide(uint32_t now) {
 // ============================================================================
 //  Guiding lights (74HC595) + status LED
 // ============================================================================
-void writePattern(uint16_t pattern, uint8_t bright) {
+void writePattern(uint16_t pattern) {
   if (pattern != shownPattern) {
     digitalWrite(PIN_595_LATCH, LOW);
     // The first byte sent ends up in the LAST chip of the chain.
@@ -450,7 +455,6 @@ void writePattern(uint16_t pattern, uint8_t bright) {
     digitalWrite(PIN_595_LATCH, HIGH);
     shownPattern = pattern;
   }
-  (void)bright;  // no OE/PWM line any more: LEDs are fully on or off
 }
 
 // Fail-safe: a lost DHT11 (common in fog) is only fatal if the laser cannot
@@ -460,14 +464,6 @@ uint8_t currentMode() {
   if ((faults & FAULT_LASER) || ((faults & FAULT_DHT) && !calibrated)) return MODE_FAULT;
   if (!calibrated && state < ST_LIGHT) return ST_LIGHT;
   return state;
-}
-
-uint8_t brightnessFor(uint8_t mode) {
-  if (mode == ST_CLEAR) return 0;
-  if (mode == MODE_FAULT) return 255;
-  uint16_t b = (mode == ST_DENSE) ? cfg.brightDense : cfg.brightLight;
-  if (feat[3] < cfg.nightPct / 100.0f) b = b * cfg.nightScale / 100;
-  return (uint8_t)b;
 }
 
 void updateLights(uint32_t now) {
@@ -480,7 +476,7 @@ void updateLights(uint32_t now) {
     if (now - lastStep >= stepMs) { lastStep = now; chasePos = (chasePos + 1) % NUM_LEDS; }
     for (uint8_t g = 0; g < CHASE_GROUP; g++) pattern |= 1U << ((chasePos + NUM_LEDS - g) % NUM_LEDS);
   }
-  writePattern(pattern, brightnessFor(mode));
+  writePattern(pattern);
 
   bool on;
   if (faults && !demo) on = (now / 150) % 2;
@@ -537,6 +533,22 @@ void drawLcd(uint32_t now) {
   }
   lcdLine(0, l0);
   lcdLine(1, l1);
+}
+
+// The PCF8574 backpack can lose its state (LED switching noise, loose wire). A missing ACK means the
+// LCD is gone; when it answers again it is re-initialised, otherwise it would stay blank or garbled.
+bool lcdDown = false;
+
+void lcdWatch() {
+  Wire.beginTransmission(LCD_I2C_ADDR);
+  bool ok = Wire.endTransmission() == 0;
+  if (ok && lcdDown) {
+    lcd.init();
+    lcd.backlight();
+    msgUntil = 0;
+    Serial.println(F("# LCD re-initialised"));
+  }
+  lcdDown = !ok;
 }
 
 void nextPage(uint32_t now) {
@@ -638,16 +650,20 @@ void setup() {
   pinMode(PIN_BTN_CAL, INPUT_PULLUP);
   pinMode(PIN_BTN_PAGE, INPUT_PULLUP);
   pinMode(PIN_DHT, INPUT_PULLUP);
-  writePattern(0, 0);
+  writePattern(0);
 
   Serial.begin(SERIAL_BAUD);
+  Wire.begin();
+#ifdef WIRE_HAS_TIMEOUT
+  Wire.setWireTimeout(3000, true);  // a stuck I2C bus must not freeze the loop
+#endif
   lcd.init();
   lcd.backlight();
   showMessage("Fog Lane Light", "v" FW_VERSION " booting", 1500);
 
   // Lamp test: sweep every LED once
-  for (uint8_t i = 0; i < NUM_LEDS; i++) { writePattern(1U << i, 255); delay(60); }
-  writePattern(0, 0);
+  for (uint8_t i = 0; i < NUM_LEDS; i++) { writePattern(1U << i); delay(60); }
+  writePattern(0);
 
   loadCalibration();
   loadCfg();
@@ -698,6 +714,7 @@ void loop() {
   }
   if (now - lastLcd >= LCD_REFRESH_MS) {
     lastLcd = now;
-    drawLcd(now);
+    lcdWatch();
+    if (!lcdDown) drawLcd(now);
   }
 }

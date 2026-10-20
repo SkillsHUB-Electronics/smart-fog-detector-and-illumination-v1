@@ -307,11 +307,11 @@ class Hub:
 
     def on_status(self, line):
         p = line.split(",")[1:]
-        if len(p) < 5:
+        if len(p) < 4:
             return
         try:
-            st = {"mode": int(p[0]), "bright": int(p[1]), "calibrated": int(p[2]) == 1,
-                  "dhtFails": int(p[3]), "rxSat": int(p[4]) == 1}
+            st = {"mode": int(p[0]), "calibrated": int(p[1]) == 1,
+                  "dhtFails": int(p[2]), "rxSat": int(p[3]) == 1}
         except ValueError:
             return
         with self.lock:
@@ -335,7 +335,7 @@ class Hub:
         pt = {"t": round(s["ts"], 1), "temp": s.get("temp"), "hum": s.get("hum"), "spread": s.get("dew_spread"),
               "light": s.get("f_light"), "sig": s.get("laser_sig"), "att": s.get("f_attenuation"),
               "p": [s.get("p_clear"), s.get("p_light"), s.get("p_dense")], "state": s.get("state"),
-              "mode": st.get("mode", s.get("state")), "bright": st.get("bright", 0), "fault": s.get("fault")}
+              "mode": st.get("mode", s.get("state")), "fault": s.get("fault")}
         with self.lock:
             self.history.append(pt)
 
