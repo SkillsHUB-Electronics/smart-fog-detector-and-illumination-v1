@@ -31,12 +31,6 @@
 #define STEP_MS_DENSE  300  // chase step in DENSE FOG (slower = "slow down")
 #define FAULT_BLINK_MS 400  // all LEDs blink together when a sensor has failed
 
-// Nominal brightness 0..255: only reported in telemetry, NOT applied to the LEDs (no OE/PWM line)
-#define BRIGHT_LIGHT   150
-#define BRIGHT_DENSE   255
-#define NIGHT_LIGHT   0.20  // ambient light feature below this = night
-#define NIGHT_SCALE     60  // % brightness at night (less glare in fog)
-
 // ---------------- Sampling --------------------------------------------------
 #define SAMPLE_MS        1000  // sensors + AI decision + CSV line
 #define DHT_EVERY_MS     2000  // DHT11 must not be read faster than 1 Hz

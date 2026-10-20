@@ -32,7 +32,6 @@ FAULT_DHT, FAULT_LASER = 1, 2
 
 # Runtime settings: key -> (min, max). Same limits as setCfg() in the firmware.
 CFG_LIMITS = {
-    "brightLight": (0, 255), "brightDense": (0, 255), "nightPct": (0, 100), "nightScale": (0, 100),
     "confirmUp": (1, 20), "confirmDown": (1, 20), "stepLight": (50, 1000), "stepDense": (50, 2000),
 }
 
@@ -205,8 +204,6 @@ class FogSim:
     def cfg_defaults(self):
         c = self.cfgh
         self.cfg = {
-            "brightLight": c["BRIGHT_LIGHT"], "brightDense": c["BRIGHT_DENSE"],
-            "nightPct": int(c["NIGHT_LIGHT"] * 100 + 0.5), "nightScale": c["NIGHT_SCALE"],
             "confirmUp": c["CONFIRM_UP"], "confirmDown": c["CONFIRM_DOWN"],
             "stepLight": c["STEP_MS_LIGHT"], "stepDense": c["STEP_MS_DENSE"],
         }
@@ -363,16 +360,6 @@ class FogSim:
             return ST_LIGHT
         return self.state
 
-    def brightness_for(self, mode):
-        if mode == ST_CLEAR:
-            return 0
-        if mode == MODE_FAULT:
-            return 255
-        b = self.cfg["brightDense"] if mode == ST_DENSE else self.cfg["brightLight"]
-        if self.feat[3] < self.cfg["nightPct"] / 100.0:
-            b = b * self.cfg["nightScale"] // 100
-        return b
-
     def sample_and_decide(self):
         if not self.started or self.first_dht or self.now - self.last_dht >= self.cfgh["DHT_EVERY_MS"]:
             self.first_dht = False
@@ -404,7 +391,7 @@ class FogSim:
             *[fmt(x, 4) for x in f], *[fmt(x, 3) for x in p],
             str(self.pred), str(self.state), str(self.faults), "1" if self.demo else "0"]))
         mode = self.current_mode()
-        self._p(f"S,{mode},{self.brightness_for(mode)},{1 if self.calibrated else 0},{self.dht_fails},{1 if self.rx_sat else 0}")
+        self._p(f"S,{mode},{1 if self.calibrated else 0},{self.dht_fails},{1 if self.rx_sat else 0}")
         off, on = self._adc_pair()
         ldr = int(clampf(round(1023 * self._ambient() + self.rnd.gauss(0, 3)), 0, 1023))
         self._p(f"R,{self.now},{fmt(self.raw_t, 1)},{fmt(self.raw_h, 1)},{ldr},{off},{on}")

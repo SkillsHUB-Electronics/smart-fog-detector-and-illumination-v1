@@ -77,9 +77,9 @@ Semua pekerjaan di proyek ini, dari sesi mana pun, wajib:
   Gaya halaman meniru `..\Camel Pedestrian` (folder itu tidak boleh diubah dari sini).
 - Server memakai `tools/serial_port.py` dan membaca baris `H,`/`D,`/`S,`/`C,`/`#`. Hanya satu program per port COM (dashboard, `RECORD_DATA.bat`, Serial Monitor).
 - **Firmware dan simulator harus tetap identik.** Jika logika `.ino` berubah (`computeFeatures`, `runModel`, `checkFaults`, `updateState`, `currentMode`,
-  `brightnessFor`, kalibrasi, parser serial), ubah `dashboard/simulator.py` juga. Konstanta dibaca simulator dari `config.h`; bobot dari `model_weights.h`.
+  kalibrasi, parser serial), ubah `dashboard/simulator.py` juga. Konstanta dibaca simulator dari `config.h`; bobot dari `model_weights.h`.
 - Baris `R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn` (2026-10-20): nilai mentah sebelum kalibrasi/rata-rata/selisih laser (DHT11 sebelum gain/offset, satu `analogRead` LDR dan receiver laser OFF/ON); dicetak setelah `S,`, ditampilkan di kartu Live "Raw sensor readings", simulator ikut mencetaknya. Kolom `D,` tidak berubah.
-- Protokol tambahan (firmware): `!get`, `!set key=nilai`, `!reset` (pengaturan di EEPROM alamat 16, `Cfg`), baris status `S,mode,bright,calibrated,dhtFails,rxSat`,
+- Protokol tambahan (firmware): `!get`, `!set key=nilai`, `!reset` (pengaturan di EEPROM alamat 16, `Cfg`), baris status `S,mode,calibrated,dhtFails,rxSat` (kolom `bright` dan setelan kecerahan/malam dihapus 2026-10-20: tanpa PWM),
   baris `C,...`. Kolom `D,` tidak diubah (recorder dan `train_model.py` bergantung padanya). Batas nilai: `CFG_LIMITS` di simulator = `setCfg()` di firmware.
 - Rekaman simulator disimpan sebagai `data/sim_*.csv` agar tidak ikut training (`train_*.csv`).
 - **LCD I2C (2026-10-20):** LCD kini lewat backpack I2C (SDA=A4, SCL=A5, `LCD_I2C_ADDR` 0x27, library `LiquidCrystal I2C`); **Revisi 2026-10-20:** 74HC595 tanpa pin OE/PWM (OE ke GND; kecerahan tidak lagi diterapkan ke LED, nilai `bright` tetap dilaporkan di telemetri), SH_CP/ST_CP/DS = D13/D12/D11 lewat `shiftOut` (bukan SPI), tombol CAL=D3, PAGE=D4, status LED=D5 (A3 bebas). Dikompilasi OK (19492 B / 60 %, RAM 1452 B / 70 %). Cadangan `backups/pre_nopwm/`. Cadangan di `backups/pre_i2c/`.

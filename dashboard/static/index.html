@@ -205,7 +205,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
 
       <div class="grid g3">
         <div class="card p"><h2>Raw sensor readings</h2><div class="rows" id="raw"></div>
-          <div class="note">Unfiltered: DHT11 before gain/offset, single ADC reads of the LDR and of the receiver with laser OFF / ON (no averaging, no subtraction).</div></div>
+          <div class="note">Unfiltered: DHT11 before gain/offset, single ADC reads of the LDR and of the one receiver (phototransistor, A1), read twice: laser switched OFF (ambient light only) and ON (ambient + laser). ON − OFF is the laser signal; the AI uses its averaged value.</div></div>
       </div>
 
       <div class="grid g2">
@@ -233,7 +233,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
           <div><b style="font-size:12.5px">Temperature &amp; dew-point spread (°C)</b><canvas class="chart" id="chT"></canvas><div class="legend" id="lgT"></div></div>
           <div><b style="font-size:12.5px">Relative humidity (%)</b><canvas class="chart" id="chH"></canvas><div class="legend" id="lgH"></div></div>
           <div><b style="font-size:12.5px">Laser signal vs clear-air baseline (counts)</b><canvas class="chart" id="chL"></canvas><div class="legend" id="lgL"></div></div>
-          <div><b style="font-size:12.5px">Ambient light &amp; nominal lamp brightness (%)</b><canvas class="chart" id="chB"></canvas><div class="legend" id="lgB"></div></div>
+          <div><b style="font-size:12.5px">Ambient light (%)</b><canvas class="chart" id="chB"></canvas><div class="legend" id="lgB"></div></div>
         </div></div>
       <div class="grid g2">
         <div class="card p"><h2>How the five features are made</h2>
@@ -366,7 +366,7 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
           <tr><td>PC → Uno</td><td><code>c d p i h</code></td><td>calibrate · demo on/off · next LCD page · info · help</td></tr>
           <tr><td>PC → Uno</td><td><code>!get</code> <code>!set key=value</code> <code>!reset</code></td><td>read / write / restore the settings above</td></tr>
           <tr><td>Uno → PC</td><td><code>H,…</code> <code>D,…</code></td><td>CSV header and one sample per second (same as the recorder)</td></tr>
-          <tr><td>Uno → PC</td><td><code>S,mode,bright,calibrated,dhtFails,rxSat</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), brightness 0–255, health</td></tr>
+          <tr><td>Uno → PC</td><td><code>S,mode,calibrated,dhtFails,rxSat</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), health</td></tr>
           <tr><td>Uno → PC</td><td><code>R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn</code></td><td>raw sensor values before calibration, averaging and laser OFF/ON subtraction</td></tr>
           <tr><td>Uno → PC</td><td><code>C,key=value,…</code></td><td>current settings</td></tr>
           <tr><td>Uno → PC</td><td><code># …</code></td><td>messages (state changes, calibration result, errors)</td></tr></table></div></div>
@@ -387,13 +387,10 @@ pre.console{margin:0;background:#0b1424;color:#bfe3c8;border-radius:10px;padding
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
+const NIGHT_LIGHT = 0.2;  // ambient-light feature below this is drawn as night
 const STATES = ["CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"];
 const FEATS = [["temp", -2, 3], ["humidity", -3.5, 1.5], ["dew_spread", 0, 4], ["light", 0, 1], ["attenuation", -0.2, 1.2]];
 const SET_INFO = {
-  brightLight: ["Brightness, light fog", "0–255, nominal: reported only, the LEDs are not dimmed (no PWM line)"],
-  brightDense: ["Brightness, dense fog", "0–255"],
-  nightPct: ["Night threshold", "% ambient light below which it counts as night"],
-  nightScale: ["Night brightness", "% of the brightness used at night (less glare in fog)"],
   confirmUp: ["Confirm: more severe", "agreeing samples (1 s each) before the state gets worse"],
   confirmDown: ["Confirm: less severe", "agreeing samples before the state relaxes"],
   stepLight: ["Chase step, light fog", "ms per step (normal speed)"],
@@ -460,7 +457,6 @@ function buildScene() {
     lamps.push({ glow, dot });
   }
   scn.mode = el("text", { x: 14, y: 22, "font-size": 12, "font-weight": 700, fill: "#17233a" });
-  scn.mode2 = el("text", { x: 14, y: 40, "font-size": 11, fill: "#475569" });
   scn.dim = el("rect", { x: 0, y: 0, width: 1000, height: 330, fill: "#050b1a", opacity: 0, "pointer-events": "none" });
 }
 
@@ -468,7 +464,7 @@ let chasePos = 0, lastStep = 0;
 function tickLamps() {
   if (!S) return;
   const st = S.status, cfg = S.cfg, now = performance.now();
-  let mode = st ? st.mode : null, bright = st ? st.bright : 0;
+  let mode = st ? st.mode : null;
   const on = new Array(8).fill(false);
   if (mode === 3) { if (Math.floor(now / 400) % 2 === 0) on.fill(true); }
   else if (mode === 1 || mode === 2) {
@@ -476,7 +472,7 @@ function tickLamps() {
     if (now - lastStep >= step) { lastStep = now; chasePos = (chasePos + 1) % 8; }
     for (let g = 0; g < 3; g++) on[(chasePos + 8 - g) % 8] = true;
   }
-  const a = Math.max(0.15, bright / 255);
+  const a = 1;
   lamps.forEach((l, i) => {
     l.glow.setAttribute("opacity", on[i] ? (0.15 + 0.6 * a).toFixed(2) : 0);
     l.glow.setAttribute("r", on[i] ? (22 + 20 * a).toFixed(0) : 22);
@@ -490,7 +486,7 @@ function updateScene() {
   const att = sm && sm.f_attenuation != null ? Math.max(0, Math.min(1, sm.f_attenuation)) : 0;
   const cal = st ? st.calibrated : false;
   const light = sm && sm.f_light != null ? sm.f_light : 0.8;
-  const night = light < (S.cfg.nightPct != null ? S.cfg.nightPct / 100 : 0.2);
+  const night = light < NIGHT_LIGHT;
   scn.fog.setAttribute("opacity", cal ? (0.1 + 0.85 * att).toFixed(2) : "0.1");
   scn.sky.setAttribute("fill", night ? "#1e2a44" : "#cfe0f3");
   scn.sun.setAttribute("fill", night ? "#e5e7eb" : "#fde68a");
@@ -508,8 +504,6 @@ function updateScene() {
   const m = st ? st.mode : null;
   scn.mode.textContent = m == null ? "" : `Lights: ${STATES[m]}${S.sample && S.sample.demo ? " (demo)" : ""}`;
   scn.mode.setAttribute("fill", night ? "#e2e8f0" : "#17233a");
-  scn.mode2.textContent = m == null ? "" : `nominal brightness ${(st.bright / 255 * 100).toFixed(0)} %`;
-  scn.mode2.setAttribute("fill", night ? "#cbd5e1" : "#475569");
 }
 
 /* ---------------------------------------------------------------- rendering */
@@ -518,7 +512,7 @@ function banners() {
   if (!L.mode) return [["bad", "Not connected to an Arduino."]];
   if (L.dataAge != null && L.dataAge > 5) out.push(["bad", `No data for ${L.dataAge.toFixed(0)} s — check the USB cable or restart the dashboard.`]);
   if (!sm) return out.concat([["info", "Waiting for the first sample (the Uno restarts when the port opens, ~3 s)."]]);
-  if (!L.hasStatus) out.push(["warn", "This firmware does not send the status line (S). Re-upload firmware/fog_illumination_uno to get brightness, mode and health."]);
+  if (!L.hasStatus) out.push(["warn", "This firmware does not send the status line (S). Re-upload firmware/fog_illumination_uno to get mode and health."]);
   if (sm.demo) out.push(["info", "Demo mode: the lights cycle CLEAR → LIGHT → DENSE → FAULT every 5 s and ignore the sensors."]);
   if (st && !st.calibrated) out.push(["warn", "Not calibrated: the lights never go below LIGHT FOG. Calibrate in clear air (Controls)."]);
   if (sm.fault & 2) out.push(["bad", "Laser fault: signal < 5 % of baseline although the air is dry — beam blocked or misaligned. All lights blink (fail-safe)."]);
@@ -560,7 +554,7 @@ function render() {
   $("tSigN").textContent = sm && sm.baseline ? `baseline ${num(sm.baseline, 0)}` : "baseline —";
   $("tAtt").firstChild.nodeValue = sm && st && st.calibrated ? (sm.f_attenuation * 100).toFixed(0) : "—";
   $("tTempN").textContent = st && st.dhtFails ? `DHT11 failing ×${st.dhtFails}` : "DHT11";
-  $("tLightN").textContent = sm ? (sm.f_light < (c.nightPct != null ? c.nightPct / 100 : .2) ? "LDR · night mode" : "LDR · day") : "LDR";
+  $("tLightN").textContent = sm ? (sm.f_light < NIGHT_LIGHT ? "LDR · night mode" : "LDR · day") : "LDR";
 
   // probabilities + features
   const pr = sm ? [sm.p_clear, sm.p_light, sm.p_dense] : [0, 0, 0];
@@ -581,14 +575,13 @@ function render() {
     rows.push(["Receiver", st && st.rxSat ? tag("saturated", "warn") : tag("OK", "ok")]);
     rows.push(["Calibration", st && !st.calibrated ? tag("not calibrated", "warn") : tag("baseline " + num(sm.baseline, 0), "ok")]);
     rows.push(["Lights", mode == null ? "—" : tag(STATES[mode] + (sm.demo ? " · demo" : ""), mode === 3 ? "bad" : mode === 0 ? "ok" : "info")]);
-    rows.push(["Nominal brightness", st ? `${(st.bright / 255 * 100).toFixed(0)} % (${st.bright}/255)` : "—"]);
   }
   $("health").innerHTML = rows.length ? rows.map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No data yet.</div>';
 
   // raw sensor values (R line)
   const rw = S.raw;
   $("raw").innerHTML = rw ? [["DHT11 temperature", rw.temp == null ? "—" : rw.temp.toFixed(1) + " °C"], ["DHT11 humidity", rw.hum == null ? "—" : rw.hum.toFixed(1) + " %"],
-    ["LDR (ADC)", rw.ldr], ["Receiver, laser OFF (ADC)", rw.rxOff], ["Receiver, laser ON (ADC)", rw.rxOn], ["ON − OFF", rw.rxOn - rw.rxOff]]
+    ["LDR (ADC)", rw.ldr], ["Receiver A1, laser OFF (ADC)", rw.rxOff], ["Receiver A1, laser ON (ADC)", rw.rxOn], ["ON − OFF (laser signal)", rw.rxOn - rw.rxOff]]
     .map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No raw line yet (re-upload the firmware).</div>';
 
   // controls
@@ -769,7 +762,7 @@ const CH = [
   ["chT", [{ n: "temperature", color: "red", get: p => p.temp }, { n: "dew-point spread", color: "cyan", get: p => p.spread }], {}, "lgT"],
   ["chH", [{ n: "humidity", color: "blue", get: p => p.hum }], { min: 0, max: 100 }, "lgH"],
   ["chL", [{ n: "laser signal", color: "purple", get: p => p.sig }, { n: "baseline", color: "tx", dash: [5, 4], get: p => (S && S.sample && S.sample.baseline) || null }], {}, "lgL"],
-  ["chB", [{ n: "ambient light", color: "amber", get: p => p.light == null ? null : p.light * 100 }, { n: "nominal brightness", color: "green", get: p => p.bright / 255 * 100 }], { min: 0, max: 100 }, "lgB"],
+  ["chB", [{ n: "ambient light", color: "amber", get: p => p.light == null ? null : p.light * 100 }], { min: 0, max: 100 }, "lgB"],
 ];
 function drawCharts() {
   CH.forEach(([id, series, o, lg]) => {
@@ -1021,7 +1014,7 @@ document.querySelectorAll("#nav button").forEach(b => b.addEventListener("click"
 function addHistory(s) {
   if (!s || s.ts === lastTs) return; lastTs = s.ts;
   const st = S.status || {};
-  H.push({ t: s.ts, temp: s.temp, hum: s.hum, spread: s.dew_spread, light: s.f_light, sig: s.laser_sig, att: s.f_attenuation, p: [s.p_clear, s.p_light, s.p_dense], state: s.state, mode: st.mode ?? s.state, bright: st.bright || 0, fault: s.fault });
+  H.push({ t: s.ts, temp: s.temp, hum: s.hum, spread: s.dew_spread, light: s.f_light, sig: s.laser_sig, att: s.f_attenuation, p: [s.p_clear, s.p_light, s.p_dense], state: s.state, mode: st.mode ?? s.state, fault: s.fault });
   if (H.length > 3600) H.shift();
 }
 function onState(j) { S = j; addHistory(j.sample); render(); }
