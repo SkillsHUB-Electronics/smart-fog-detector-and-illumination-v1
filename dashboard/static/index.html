@@ -51,7 +51,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .sys b{font-size:12.5px;color:#dce7f7;display:block}
 .sys span{font-size:11px;color:var(--side-tx-dim)}
 main{min-width:0;display:flex;flex-direction:column}
-.topbar{display:flex;align-items:center;gap:12px;padding:14px 22px;flex-wrap:wrap}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 22px;flex-wrap:wrap;background:var(--card);border-bottom:1px solid var(--bd);margin-bottom:16px}
 .pill{display:inline-flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--bd);border-radius:999px;padding:7px 14px;font-size:12.5px;color:var(--tx-2);box-shadow:var(--sh)}
 .pill b{color:var(--tx);font-weight:600}
 .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
@@ -89,6 +89,13 @@ select,input{max-width:100%}
 .hero .lab{font-size:12px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.8px}
 .hero .big{font-size:34px;font-weight:800;letter-spacing:-.8px;line-height:1.05}
 .hero .sub{color:var(--tx-2);font-size:13px}
+.hero.wide{flex-direction:row;align-items:center;justify-content:space-between;gap:24px;border-left:4px solid var(--bd)}
+.hero.wide.st0{border-left-color:var(--green)}.hero.wide.st1{border-left-color:var(--amber)}.hero.wide.st2{border-left-color:var(--red)}.hero.wide.st3{border-left-color:var(--purple)}
+.hl{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
+.hstats{display:flex;flex:none}
+.hstats>div{display:flex;flex-direction:column;gap:6px;padding:0 24px;border-left:1px solid var(--bd);min-width:120px}
+.hstats .k{font-size:12px;color:var(--tx-3)}.hstats b{font-size:18px;font-weight:700}
+@media(max-width:900px){.hero.wide{flex-direction:column;align-items:stretch}.hstats>div{padding:0 14px}.hstats>div:first-child{border-left:0;padding-left:0}}
 .hero.st0 .big{color:var(--green)}.hero.st1 .big{color:var(--amber)}.hero.st2 .big{color:var(--red)}.hero.st3 .big{color:var(--purple)}.hero.st9 .big{color:var(--tx-3)}
 .banners{display:flex;flex-direction:column;gap:8px}
 .bn{border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.4;border:1px solid transparent}
@@ -222,13 +229,21 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
     <!-- ============================ LIVE ============================ -->
     <section class="page on" id="page-live">
 
-      <div class="grid hero-row">
-        <div class="card p hero st9" id="hero">
+      <div class="card p hero wide st9" id="hero">
+        <div class="hl">
           <div class="lab">Fog state (AI decision)</div>
           <div class="big" id="hState">—</div>
           <div class="sub" id="hSub">waiting for data…</div>
           <div class="banners" id="banners"></div>
         </div>
+        <div class="hstats">
+          <div><span class="k">Light</span><b id="hsLight">—</b></div>
+          <div><span class="k">Laser attenuation</span><b id="hsAtt">—</b></div>
+          <div><span class="k">Link</span><b id="hsLink">—</b></div>
+        </div>
+      </div>
+
+      <div class="grid">
         <div class="card p">
           <h2>Guide lights &amp; sensors <small id="sceneNote"></small></h2>
           <svg class="scene" id="scene" viewBox="0 0 1000 330" role="img" aria-label="Road with guide lights, laser path and sensors"></svg>
@@ -678,7 +693,10 @@ function render() {
 
   // hero
   const mode = st ? st.mode : (sm ? sm.state : null);
-  const hero = $("hero"); hero.className = "card p hero st" + (mode == null ? 9 : mode);
+  const hero = $("hero"); hero.className = "card p hero wide st" + (mode == null ? 9 : mode);
+  $("hsLight").textContent = st && st.light != null ? LIGHTN[st.light] : "—";
+  $("hsAtt").textContent = sm && st && st.calibrated ? (sm.f_attenuation * 100).toFixed(0) + " %" : "—";
+  $("hsLink").textContent = L.mode === "serial" ? L.port : L.mode === "sim" ? "Simulator" : "—";
   $("hState").textContent = mode == null ? "—" : STATES[mode];
   $("hSub").textContent = sm ? `AI: ${STATES[sm.pred]} ${(sm.p_clear != null ? Math.max(sm.p_clear, sm.p_light, sm.p_dense) * 100 : 0).toFixed(0)} % · decided state ${STATES[sm.state]}` : "waiting for data…";
   $("banners").innerHTML = banners().map(b => `<div class="bn ${b[0]}">${esc(b[1])}</div>`).join("");
