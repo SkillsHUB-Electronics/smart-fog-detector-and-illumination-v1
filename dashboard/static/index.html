@@ -239,7 +239,6 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
         <div class="hstats">
           <div><span class="k">Light</span><b id="hsLight">—</b></div>
           <div><span class="k">Laser attenuation</span><b id="hsAtt">—</b></div>
-          <div><span class="k">Last data</span><b id="hsLink">—</b></div>
         </div>
       </div>
 
@@ -696,7 +695,6 @@ function render() {
   const hero = $("hero"); hero.className = "card p hero wide st" + (mode == null ? 9 : mode);
   $("hsLight").textContent = st && st.light != null ? LIGHTN[st.light] : "—";
   $("hsAtt").textContent = sm && st && st.calibrated ? (sm.f_attenuation * 100).toFixed(0) + " %" : "—";
-  $("hsLink").textContent = L.dataAge == null ? "—" : L.dataAge.toFixed(0) + " s ago";
   $("hState").textContent = mode == null ? "—" : STATES[mode];
   $("hSub").textContent = sm ? `AI: ${STATES[sm.pred]} ${(sm.p_clear != null ? Math.max(sm.p_clear, sm.p_light, sm.p_dense) * 100 : 0).toFixed(0)} % · decided state ${STATES[sm.state]}` : "waiting for data…";
   $("banners").innerHTML = banners().map(b => `<div class="bn ${b[0]}">${esc(b[1])}</div>`).join("");
