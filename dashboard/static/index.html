@@ -57,6 +57,8 @@ main{min-width:0;display:flex;flex-direction:column}
 .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 .pill.off .dot{background:#94a3b8}.pill.bad .dot{background:var(--red)}.pill.warn .dot{background:var(--amber)}
 .topbar .sp{flex:1}
+.tl{display:flex;flex-direction:column;gap:8px}
+.tsub{display:flex;gap:8px;flex-wrap:wrap}
 .topbar h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.3px}
 .iconbtn{width:38px;height:38px;padding:0;border-radius:11px}
 .btn.usb{padding:9px 16px;font-weight:600}
@@ -163,6 +165,10 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
 .avatar{width:110px;height:110px;border-radius:50%;background:var(--bd-2) center/cover no-repeat;display:grid;place-items:center;font-size:34px;font-weight:700;color:var(--tx-3);border:3px solid var(--card)}
 #teamDlg{border:1px solid var(--bd);border-radius:var(--r);background:var(--card);color:var(--tx);padding:22px;width:min(420px,92vw)}
 #teamDlg::backdrop{background:rgba(5,10,20,.55)}
+#portDlg{border:1px solid var(--bd);border-radius:var(--r);background:var(--card);color:var(--tx);padding:22px;width:min(420px,92vw)}
+#portDlg::backdrop{background:rgba(5,10,20,.55)}
+#portDlg h2{margin:0 0 14px;font-size:16px}
+#portDlg .fl{display:block;font-size:12px;color:var(--tx-2);margin:10px 0 6px}
 #teamDlg h2{margin:0 0 14px;font-size:16px}
 #teamDlg .fl{display:block;font-size:12px;color:var(--tx-2);margin:10px 0 4px}
 #teamDlg input[type=text],#teamDlg input[type=email]{width:100%}
@@ -203,12 +209,11 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
 
   <main>
     <header class="topbar">
-      <h1 id="pageTitle">Dashboard</h1>
+      <div class="tl"><h1 id="pageTitle">Dashboard</h1>
+        <div class="tsub"><span class="pill off" id="pLink"><span class="dot"></span><b id="pLinkT">Not connected</b></span>
+          <span class="pill" id="pFw" hidden>Firmware <b id="pFwT"></b></span>
+          <span class="pill" id="pRec" hidden><span class="dot" style="background:var(--red)"></span><b id="pRecT"></b></span></div></div>
       <span class="sp"></span>
-      <span class="pill off" id="pLink"><span class="dot"></span><b id="pLinkT">Not connected</b></span>
-      <span class="pill" id="pFw" hidden>Firmware <b id="pFwT"></b></span>
-      <span class="pill" id="pAge" hidden>Last data <b id="pAgeT"></b></span>
-      <span class="pill" id="pRec" hidden><span class="dot" style="background:var(--red)"></span><b id="pRecT"></b></span>
       <span class="pill" id="pClock"><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b id="clock"></b></span>
       <button class="btn iconbtn" id="themeBtn" type="button" title="Light / dark theme"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
       <button class="btn primary usb" id="usbBtn" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M7 8h10v4a5 5 0 0 1-10 0zM12 17v5"/></svg><span id="usbT">Connect USB</span></button>
@@ -216,19 +221,6 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
 
     <!-- ============================ LIVE ============================ -->
     <section class="page on" id="page-live">
-      <div class="card p" id="connectCard" hidden>
-        <h2>Not connected to an Arduino</h2>
-        <div class="conn">
-          <label class="f">COM port<select id="qPort" style="width:min(230px,100%)"></select></label>
-          <button class="btn primary" id="qConnect">Connect</button>
-          <button class="btn" id="qSim">Use simulator</button>
-          <button class="btn sm" id="qRefresh">Refresh ports</button>
-        </div>
-        <div class="note">Close the Arduino Serial Monitor and <code>RECORD_DATA.bat</code> first — only one program can use the COM port. No Arduino? The simulator behaves exactly like the board.</div>
-        <div class="err" id="qErr"></div>
-        <div class="bn warn" id="drvHint" hidden style="margin-top:12px">No COM port yet? Windows may be missing the USB-serial driver for your board —
-          open <a href="#settings" id="drvHintLink">Settings → USB-serial driver</a>.</div>
-      </div>
 
       <div class="grid hero-row">
         <div class="card p hero st9" id="hero">
@@ -516,6 +508,16 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
   </main>
 </div>
 <div class="toast" id="toast"></div>
+<dialog id="portDlg">
+  <h2>Connect USB</h2>
+  <label class="fl">Choose the COM port of the Arduino</label>
+  <select id="dPort" style="width:100%"></select>
+  <div class="note">Close the Arduino Serial Monitor and <code>RECORD_DATA.bat</code> first: only one program can use the COM port.</div>
+  <div class="bn warn" id="drvHint" hidden style="margin-top:12px">No COM port yet? Windows may be missing the USB-serial driver for your board —
+    open <a href="#settings" id="drvHintLink">Settings → USB-serial driver</a>.</div>
+  <div class="err" id="dErr"></div>
+  <div class="tdlgbtns"><button class="btn sm" id="dRefresh" type="button">Refresh ports</button><button class="btn sm" id="dCancel" type="button">Cancel</button><button class="btn primary sm" id="dConnect" type="button">Connect</button></div>
+</dialog>
 
 <script>
 "use strict";
@@ -665,13 +667,11 @@ function render() {
   $("pLinkT").textContent = L.mode === "sim" ? "Simulator" : L.mode === "serial" ? `${L.port} · ${L.baud}` : "Not connected";
   $("usbT").textContent = L.mode ? "Disconnect" : "Connect USB";
   $("pFw").hidden = !L.fw; $("pFwT").textContent = L.fw;
-  $("pAge").hidden = L.dataAge == null; $("pAgeT").textContent = L.dataAge == null ? "" : L.dataAge.toFixed(0) + " s ago";
   const rc = S.recording, n = rc.counts.clear + rc.counts.light_fog + rc.counts.dense_fog;
   $("pRec").hidden = !rc.on; $("pRecT").textContent = rc.on ? `REC ${rc.label || "paused"} · ${n} rows` : "";
   const sys = $("sys"); sys.className = "sys " + (!L.mode ? "off" : (L.dataAge != null && L.dataAge > 5 ? "bad" : ""));
   $("sysT").textContent = !L.mode ? "Not connected" : L.mode === "sim" ? "Simulator running" : "Arduino connected";
   $("sysS").textContent = L.error || (L.mode ? (L.mode === "sim" ? S.scenarios[S.scenario] || "" : `${L.port} · ${L.baud} baud`) : "Choose a port in Settings");
-  $("connectCard").hidden = !!L.mode;
   $("simBox").hidden = L.mode !== "sim";
   if (L.mode === "sim" && document.activeElement !== $("scn")) $("scn").value = S.scenario;
   $("sceneNote").textContent = "";
@@ -773,10 +773,10 @@ $("setReset").onclick = () => { if (confirm("Restore all device settings to the 
 async function loadPorts() {
   const ports = await api("/api/ports").catch(() => []);
   const html = ports.length ? ports.map(p => `<option value="${p.port}">${p.port} — ${esc(p.driver)}${p.arduino ? " (Arduino?)" : ""}</option>`).join("") : '<option value="">no COM port found</option>';
-  const prev = $("sPort").value || $("qPort").value;
-  $("sPort").innerHTML = $("qPort").innerHTML = html;
+  const prev = $("dPort").value || $("sPort").value;
+  $("sPort").innerHTML = $("dPort").innerHTML = html;
   const ard = ports.find(p => p.arduino);
-  $("sPort").value = $("qPort").value = (ports.find(p => p.port === prev) || ard || ports[0] || {}).port || "";
+  $("sPort").value = $("dPort").value = (ports.find(p => p.port === prev) || ard || ports[0] || {}).port || "";
 }
 async function connect(port, errId) {
   $(errId).textContent = "";
@@ -787,19 +787,22 @@ async function sim(errId, scenario, speed) {
   $(errId).textContent = "";
   try { await api("/api/connect", { mode: "sim", scenario, speed }); await refresh(); } catch (e) { $(errId).textContent = e.message; }
 }
-$("qRefresh").onclick = $("sRefresh").onclick = loadPorts;
-$("qConnect").onclick = () => connect($("qPort").value, "qErr");
+$("sRefresh").onclick = $("dRefresh").onclick = loadPorts;
 $("sConnect").onclick = () => connect($("sPort").value, "sErr");
-$("qSim").onclick = () => sim("qErr", "auto", 1);
 $("sSim").onclick = () => sim("sErr", $("sScn").value, Number($("sSpeed").value));
 $("sDisc").onclick = () => act("/api/disconnect", {}, "Disconnected").then(refresh);
-$("usbBtn").onclick = async () => {  // one button: connect to the selected COM port, or disconnect
+$("usbBtn").onclick = async () => {  // one button: pick the COM port in a dialog, or disconnect
   if (S && S.link.mode) { await act("/api/disconnect", {}, "Disconnected").catch(() => {}); return refresh(); }
+  $("dErr").textContent = "";
   await loadPorts();
-  const port = $("sPort").value;
-  if (!port) return toast("No COM port found: plug in the Uno (see Settings for the driver).");
-  try { await api("/api/connect", { mode: "serial", port, baud: Number($("sBaud").value) }); toast("Connecting to " + port + "… data starts after ~3 s"); await refresh(); }
-  catch (e) { toast(e.message); }
+  $("portDlg").showModal();
+};
+$("dCancel").onclick = () => $("portDlg").close();
+$("dConnect").onclick = async () => {
+  const port = $("dPort").value;
+  if (!port) { $("dErr").textContent = "No COM port found: plug in the Uno or install the USB-serial driver."; return; }
+  try { await api("/api/connect", { mode: "serial", port, baud: Number($("sBaud").value) }); $("portDlg").close(); toast("Connecting to " + port + "… data starts after ~3 s"); await refresh(); }
+  catch (e) { $("dErr").textContent = e.message; }
 };
 // theme: follows the system until the button is used; the choice is remembered
 try { const t = localStorage.getItem("fogTheme"); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* storage blocked */ }
