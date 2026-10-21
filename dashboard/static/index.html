@@ -272,12 +272,12 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
         <div class="card p"><h2>AI probabilities</h2><div class="bars" id="probs"></div>
           <div class="note">Softmax logistic regression on the Uno. The state changes only after a few agreeing samples (hysteresis: <span id="hyst">2 up / 5 down</span>).</div></div>
         <div class="card p"><h2>Model inputs (5 features)</h2><div class="bars" id="feats"></div></div>
-        <div class="card p"><h2>Device health</h2><div class="rows" id="health"></div></div>
+        <div class="card p"><h2>Conditions <small>light + fog</small></h2><div class="rows" id="cond"></div><div class="bars" id="lprobs" style="margin-top:10px"></div>
+          <div class="note">Light class (day / twilight / night) comes from the LDR; fog class from the main AI. Both are debounced on the Uno.</div></div>
       </div>
 
       <div class="grid g3">
-        <div class="card p"><h2>Conditions <small>light + fog</small></h2><div class="rows" id="cond"></div><div class="bars" id="lprobs" style="margin-top:10px"></div>
-          <div class="note">Light class (day / twilight / night) comes from the LDR; fog class from the main AI. Both are debounced on the Uno.</div></div>
+        <div class="card p"><h2>Device health</h2><div class="rows" id="health"></div></div>
         <div class="card p"><h2>Raw sensor readings</h2><div class="rows" id="raw"></div>
           <div class="note">Unfiltered: DHT11 before gain/offset, single ADC reads of the LDR and of the one receiver (phototransistor, A1), read twice: laser switched OFF (ambient light only) and ON (ambient + laser). ON − OFF is the laser signal; the AI uses its averaged value.</div></div>
       </div>
