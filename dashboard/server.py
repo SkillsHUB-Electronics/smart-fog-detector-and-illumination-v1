@@ -662,6 +662,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(list(HUB.console)[-200:][::-1])
         if p == "/api/ports":
             return self._json(serial_ports())
+        if p == "/api/firmware":  # Settings > Firmware & Ports
+            return self._json({"project": simulator._fw_version(), "cli": bool(maintenance.find_cli()),
+                               "board": "Arduino Uno (arduino:avr:uno)"})
         if p == "/api/calibration":
             return self._json({"file": maintenance.read_calibration(), "fields": {
                 k: {"min": v[1], "max": v[2], "default": v[3]} for k, v in maintenance.CAL_FIELDS.items()},

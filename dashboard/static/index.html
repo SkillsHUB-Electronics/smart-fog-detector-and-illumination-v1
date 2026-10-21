@@ -129,8 +129,9 @@ select,input{max-width:100%}
 .tabs{display:flex;gap:6px;padding:6px;margin-bottom:16px}
 .tabs button{flex:1;border:0;background:transparent;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:600;color:var(--tx-2);cursor:pointer}
 .tabs button.on{background:var(--blue);color:#fff}
-#page-settings .card[data-st]{display:none}
-#page-settings[data-t=general] .card[data-st=general],#page-settings[data-t=device] .card[data-st=device],#page-settings[data-t=fwports] .card[data-st=fwports],#page-settings[data-t=wiring] .card[data-st=wiring]{display:block}
+#page-settings [data-st]{display:none}
+#page-settings[data-t=general] [data-st=general],#page-settings[data-t=device] [data-st=device],#page-settings[data-t=wiring] [data-st=wiring],#page-settings[data-t=fwports] .card[data-st=fwports]{display:block}
+#page-settings[data-t=fwports] .grid[data-st=fwports]{display:grid}
 .lcdlbl{display:block;margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--tx-2)}
 .lcdin{position:relative}.lcdin input{width:100%;padding-right:52px;font-weight:600}
 .lcdin small{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--tx-2);font-size:12px}
@@ -444,6 +445,16 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
         <div class="note">Also: <a href="/docs/block_diagram.svg" target="_blank" rel="noopener">block diagram ↗</a> · <a href="/docs/flowchart.svg" target="_blank" rel="noopener">flowchart ↗</a>.
           D0/D1 are the USB serial port: keep them free.</div></div>
 
+      <div class="grid g2" data-st="fwports">
+        <div class="card p"><h2>Ports <span class="sp"></span><button class="btn sm" id="fwRefresh">Refresh</button></h2>
+          <div class="rows" id="fwPorts"></div>
+          <div class="note">The dashboard is reachable from this PC only. Only one program can use a COM port at a time (dashboard, <code>RECORD_DATA.bat</code>, Serial Monitor).</div></div>
+        <div class="card p"><h2>Firmware</h2>
+          <div class="rows" id="fwInfo"></div>
+          <label class="f" style="margin-top:12px">Upload to<select id="fwPort" style="width:100%"></select></label>
+          <div class="ctl" style="margin-top:12px"><button class="btn" id="fwCheck">Check device</button><button class="btn" id="fwCompile">Compile</button><button class="btn primary" id="fwUpload">Upload</button></div>
+          <pre class="console" id="jobFw" style="margin-top:12px;max-height:240px" hidden></pre></div>
+      </div>
       <div class="card p" id="drvCard" data-st="fwports"><h2>USB-serial driver <small>CH340 · CP210x · FTDI · Arduino</small><span class="sp"></span><button class="btn sm" id="drvRescan">Rescan</button></h2>
         <div id="drvList"><div class="empty">Checking Windows…</div></div>
         <div class="ctl" style="margin-top:12px"><button class="btn" id="drvScan" title="Asks Windows to look for new hardware (needs administrator approval)">Scan for hardware changes</button></div>
@@ -708,7 +719,7 @@ function banners() {
   return out;
 }
 function render() {
-  ioRender();
+  ioRender(); renderFw();
   if (S && S.link) $("abFw").textContent = S.link.fw || "—";
   if (!S) return;
   const L = S.link, sm = S.sample, st = S.status, c = S.cfg;
@@ -821,9 +832,9 @@ async function loadPorts() {
   const ports = await api("/api/ports").catch(() => []);
   const html = ports.length ? ports.map(p => `<option value="${p.port}">${p.port} — ${esc(p.driver)}${p.arduino ? " (Arduino?)" : ""}</option>`).join("") : '<option value="">no COM port found</option>';
   const prev = $("dPort").value || $("sPort").value;
-  $("sPort").innerHTML = $("dPort").innerHTML = html;
+  $("sPort").innerHTML = $("dPort").innerHTML = $("fwPort").innerHTML = html;
   const ard = ports.find(p => p.arduino);
-  $("sPort").value = $("dPort").value = (ports.find(p => p.port === prev) || ard || ports[0] || {}).port || "";
+  $("sPort").value = $("dPort").value = $("fwPort").value = (ports.find(p => p.port === prev) || ard || ports[0] || {}).port || "";
 }
 async function connect(port, errId) {
   $(errId).textContent = "";
@@ -1001,10 +1012,11 @@ function renderJob() {
   const show = (id, on) => { const e = $(id); e.hidden = !on || j.state === "idle"; if (!e.hidden) { e.textContent = txt; e.scrollTop = 1e9; } };
   show("jobCal", j.kind === "firmware" && jobFrom === "cal");
   show("jobLrn", j.kind !== "firmware" || jobFrom === "learn");
-  ["calUpload", "calCompile", "lrTrain", "lrCompare", "lrInstall", "lrInstallUp"].forEach(id => $(id).disabled = busy);
-  renderLearning();
+  show("jobFw", j.kind === "firmware" && jobFrom === "fw");
+  ["calUpload", "calCompile", "fwCompile", "fwUpload", "lrTrain", "lrCompare", "lrInstall", "lrInstallUp"].forEach(id => $(id).disabled = busy);
+  renderLearning(); renderFw();
 }
-function uploadPort() { return S && S.link.mode === "serial" ? S.link.port : $("sPort").value; }
+function uploadPort() { return S && S.link.mode === "serial" ? S.link.port : $("fwPort").value || $("sPort").value; }
 
 /* ---------------------------------------------------------------- calibration page */
 let CALF = null, CALIN = {}, CALLIM = {}, PT = { t: [{ m: null }, { m: null }], h: [{ m: null }, { m: null }] };
@@ -1224,11 +1236,26 @@ document.querySelectorAll("#nav button").forEach(b => b.addEventListener("click"
   const p = b.dataset.p;
   if (p === "calibration") loadCalibration(false);
   if (p === "learning") { loadLearning(); loadFiles(); }
-  if (p === "settings") loadPins();
+  if (p === "settings") { loadPins(); loadFw(); }
   if (p === "author") loadTeam();
 }));
 
 
+let FWP = null;
+async function loadFw() { FWP = await api("/api/firmware").catch(() => FWP); renderFw(); }
+function renderFw() {
+  if (!S) return;
+  const L = S.link, j = JOBS, when = j.kind === "firmware" && j.state === "ok" && j.ended ? new Date(j.ended * 1000).toLocaleString() : "—";
+  const rows = a => a.map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("");
+  $("fwPorts").innerHTML = rows([["Dashboard port <small>TCP</small>", location.port || 80], ["Serial port", L.mode === "serial" ? L.port : L.mode === "sim" ? "simulator" : "not connected"], ["Baud", L.baud || 115200]]);
+  $("fwInfo").innerHTML = rows([["Project firmware", FWP ? FWP.project : "—"], ["Device firmware", L.fw || "—"], ["Last upload (this session)", when],
+    ["Arduino tools", FWP ? (FWP.cli ? "arduino-cli found" : "not found") : "—"], ["Board", FWP ? FWP.board : "—"]]);
+}
+$("fwRefresh").onclick = loadPorts;
+$("fwCheck").onclick = async () => { await loadPorts(); await loadFw(); const L = S.link;
+  toast(!L.mode ? "No device connected." : L.mode === "sim" ? "Simulator connected." : L.fw && FWP && L.fw !== FWP.project ? `Device firmware ${L.fw} differs from the project ${FWP.project}: upload.` : `Device ${L.port} answers, firmware ${L.fw || "?"}.`); };
+$("fwCompile").onclick = () => startUpload("fw", true).catch(() => {});
+$("fwUpload").onclick = () => startUpload("fw", false).catch(() => {});
 document.querySelectorAll("#setTabs button").forEach(b => b.onclick = () => {
   $("page-settings").dataset.t = b.dataset.t;
   document.querySelectorAll("#setTabs button").forEach(x => x.classList.toggle("on", x === b));
