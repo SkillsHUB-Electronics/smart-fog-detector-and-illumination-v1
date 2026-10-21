@@ -97,7 +97,7 @@ select,input{max-width:100%}
 .hero.wide.st0{border-left-color:var(--green)}.hero.wide.st1{border-left-color:var(--amber)}.hero.wide.st2{border-left-color:var(--red)}.hero.wide.st3{border-left-color:var(--purple)}
 .hl{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
 .hstats{display:flex;flex:none}
-.hstats>div{display:flex;flex-direction:column;gap:6px;padding:0 24px;border-left:1px solid var(--bd);min-width:120px}
+.hstats>div{display:flex;flex-direction:column;gap:6px;padding:0 32px;border-left:1px solid var(--bd);min-width:230px}
 .hstats .k{font-size:12px;color:var(--tx-3)}.hstats b{font-size:18px;font-weight:700}
 @media(max-width:900px){.hero.wide{flex-direction:column;align-items:stretch}.hstats>div{padding:0 14px}.hstats>div:first-child{border-left:0;padding-left:0}}
 .hero.st0 .big{color:var(--green)}.hero.st1 .big{color:var(--amber)}.hero.st2 .big{color:var(--red)}.hero.st3 .big{color:var(--purple)}.hero.st9 .big{color:var(--tx-3)}
@@ -613,12 +613,12 @@ function buildScene() {
   scn.beam = el("line", { x1: 74, y1: 140, x2: 926, y2: 140, stroke: "#ef4444", "stroke-width": 4, "stroke-linecap": "round" });
   scn.beamTx = el("text", { x: 500, y: 128, "text-anchor": "middle", "font-size": 12, fill: "#475569", "font-weight": 600 }); scn.beamTx.textContent = "";
   // DHT11 + LDR boxes
-  el("rect", { x: 380, y: 28, width: 150, height: 52, rx: 8, fill: "#ffffff", opacity: .92 });
-  scn.dht = el("text", { x: 455, y: 50, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#17233a" });
-  scn.dht2 = el("text", { x: 455, y: 68, "text-anchor": "middle", "font-size": 11, fill: "#5c6b85" });
-  el("rect", { x: 700, y: 28, width: 130, height: 52, rx: 8, fill: "#ffffff", opacity: .92 });
-  scn.ldr = el("text", { x: 765, y: 50, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#17233a" });
-  scn.ldr2 = el("text", { x: 765, y: 68, "text-anchor": "middle", "font-size": 11, fill: "#5c6b85" });
+  el("rect", { x: 310, y: 28, width: 170, height: 52, rx: 8, fill: "#ffffff", opacity: .92 });
+  scn.dht = el("text", { x: 395, y: 50, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#17233a" });
+  scn.dht2 = el("text", { x: 395, y: 68, "text-anchor": "middle", "font-size": 11, fill: "#5c6b85" });
+  el("rect", { x: 520, y: 28, width: 170, height: 52, rx: 8, fill: "#ffffff", opacity: .92 });
+  scn.ldr = el("text", { x: 605, y: 50, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#17233a" });
+  scn.ldr2 = el("text", { x: 605, y: 68, "text-anchor": "middle", "font-size": 11, fill: "#5c6b85" });
   // fog layer (over the scene, under the lamps)
   scn.fog = el("g", { opacity: 0 });
   for (const [cx, cy, rx, ry] of [[120, 180, 190, 70], [380, 150, 220, 80], [640, 190, 230, 75], [880, 150, 180, 70], [500, 240, 330, 60]])
