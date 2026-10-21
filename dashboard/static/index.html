@@ -187,6 +187,12 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
 .tphotobtns{display:flex;flex-direction:column;gap:8px}
 .tdlgbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 /* test io, guide, about */
+.stepper{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--card)}
+.stepper button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border:0;background:transparent;color:var(--tx-2);cursor:pointer;font-size:13px;font-weight:600}
+.stepper button .n{width:32px;height:32px;border-radius:50%;background:var(--bd-2);display:grid;place-items:center;font-size:13px;color:var(--tx-2)}
+.stepper button.on{background:var(--blue-soft);color:var(--tx)}
+.stepper button.on .n{background:var(--blue);color:#fff}
+.lrstep{display:flex;flex-direction:column;gap:16px}
 .iogrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
 .iogrid button{padding:14px 0;border:1px solid var(--bd);border-radius:10px;background:var(--card);cursor:pointer;font-weight:600;color:var(--tx-2)}
 .iogrid button.on{background:#fde047;border-color:#eab308;color:#3b2f00}
@@ -355,11 +361,14 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
     <!-- ============================ LEARNING ============================ -->
     <section class="page" id="page-learning">
       <div class="card p"><h2>Learning <small>collect labelled data → train the model → install it → upload</small>
-          <span class="sp"></span><span class="seg" id="lrKind"><button class="on" data-k="train">Recorded data</button><button data-k="sim">Simulator data (demo)</button></span></h2>
-        <div class="grid g3" style="gap:12px">
-          <div class="bn info"><b>1 · Collect.</b> Record every scenario with its true fog label (clear, light fog, dense fog) <i>and</i> its light (daylight, twilight, night) — include the tricky ones: humid but no fog, dark but no fog. The light model needs ≥ 5 rows of each light class; the fog model ignores the light label.</div>
-          <div class="bn info"><b>2 · Train.</b> The model is trained on a 80/20 split in blocks of consecutive rows, so the test score is honest.</div>
-          <div class="bn info"><b>3 · Install.</b> Writes <code>model_weights.h</code> (the old one is backed up) and uploads the firmware.</div></div></div>
+          <span class="sp"></span><span class="seg" id="lrKind"><button class="on" data-k="train">Recorded data</button><button data-k="sim">Simulator data (demo)</button></span></h2></div>
+      <div class="stepper" id="lrSteps">
+        <button class="on" data-s="1" type="button"><span class="n">1</span>Record</button>
+        <button data-s="2" type="button"><span class="n">2</span>Train</button>
+        <button data-s="3" type="button"><span class="n">3</span>Deploy</button>
+      </div>
+      <div class="lrstep" data-s="1">
+      <div class="bn info"><b>1 · Collect.</b> Record every scenario with its true fog label (clear, light fog, dense fog) <i>and</i> its light (daylight, twilight, night) — include the tricky ones: humid but no fog, dark but no fog. The light model needs ≥ 5 rows of each light class; the fog model ignores the light label.</div>
       <div class="card p"><h2>Record training data <small>same CSV as RECORD_DATA.bat → TRAIN_MODEL.bat</small></h2>
         <div class="conn">
           <label class="f">Label (what the air really is)<select id="rLabel"><option value="clear">clear</option><option value="light_fog">light_fog</option><option value="dense_fog">dense_fog</option></select></label>
@@ -372,16 +381,28 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
         <div class="note">Rows with a sensor fault or recorded in demo mode are skipped. Simulator recordings are saved as <code>sim_*.csv</code> and are never used for training.</div>
         <div style="overflow:auto;margin-top:10px"><table id="rFiles"></table></div></div>
       <div class="card p"><h2>Dataset <small id="dsKind"></small></h2><div id="dsBox"><div class="empty">Loading…</div></div></div>
-      <div class="card p"><h2>Train &amp; install</h2>
+      </div>
+      <div class="lrstep" data-s="2" hidden>
+      <div class="bn info"><b>2 · Train.</b> The model is trained on a 80/20 split in blocks of consecutive rows, so the test score is honest.</div>
+      <div class="card p"><h2>Train &amp; evaluate</h2>
         <div class="rows"><div class="row"><span class="k">Model in the firmware (model_weights.h)</span><span class="v" id="lrModel">—</span></div></div>
         <div class="ctl" style="margin-top:12px">
           <button class="btn primary" id="lrTrain">Train &amp; evaluate</button>
-          <button class="btn" id="lrCompare">Train + compare sensors</button>
+          <button class="btn" id="lrCompare">Train + compare sensors</button></div>
+        <div class="note" id="lrNote">Training uses pure Python and can take a minute or more with many rows.</div></div>
+      </div>
+      <div class="lrstep" data-s="3" hidden>
+      <div class="bn info"><b>3 · Install.</b> Writes <code>model_weights.h</code> (the old one is backed up) and uploads the firmware.</div>
+      <div class="card p"><h2>Install &amp; upload</h2>
+        <div class="ctl">
           <button class="btn" id="lrInstall">Install into firmware</button>
-          <button class="btn" id="lrInstallUp">Install + upload to board</button></div>
-        <div class="note" id="lrNote">Training uses pure Python and can take a minute or more with many rows. <i>Install</i> trains on <b>all</b> recorded data and writes <code>model_weights.h</code>; it never uses simulator data.</div>
-        <pre class="console" id="jobLrn" style="margin-top:12px;max-height:260px" hidden></pre></div>
-      <div class="card p" id="lrRes" hidden></div>
+          <button class="btn primary" id="lrInstallUp">Install + upload to board</button></div>
+        <div class="note"><i>Install</i> trains on <b>all</b> recorded data and writes <code>model_weights.h</code>; it never uses simulator data.</div></div>
+      </div>
+      <div class="lrstep" data-s="23" hidden>
+        <pre class="console" id="jobLrn" style="max-height:260px" hidden></pre>
+        <div class="card p" id="lrRes" hidden></div>
+      </div>
     </section>
 
     <!-- ============================ SETTINGS ============================ -->
@@ -1135,6 +1156,11 @@ function renderLearning() {
 document.querySelectorAll("#lrKind button").forEach(b => b.onclick = () => {
   LRKIND = b.dataset.k; document.querySelectorAll("#lrKind button").forEach(x => x.classList.toggle("on", x === b)); $("lrRes").hidden = true; loadLearning();
 });
+function lrStep(n) {
+  document.querySelectorAll("#lrSteps button").forEach(b => b.classList.toggle("on", b.dataset.s === String(n)));
+  document.querySelectorAll(".lrstep").forEach(p => p.hidden = !p.dataset.s.includes(String(n)));
+}
+document.querySelectorAll("#lrSteps button").forEach(b => b.onclick = () => lrStep(b.dataset.s));
 function runTrain(compare) {
   jobFrom = "learn"; $("lrRes").hidden = true;
   act("/api/learning/train", { kind: LRKIND, compare }).then(() => { jobWatch = showResult; pollJob(); }).catch(() => {});
