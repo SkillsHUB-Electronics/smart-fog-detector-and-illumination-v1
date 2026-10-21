@@ -283,19 +283,10 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
       </div>
 
       <div class="grid g2">
-        <div class="card p"><h2>Controls <small>sent to the Uno over USB</small></h2>
-          <div class="ctl">
-            <button class="btn primary" id="bCal">Calibrate laser</button>
-            <button class="btn" id="bDemo">Demo mode</button>
-            <button class="btn" id="bPage">Next LCD page</button>
-            <button class="btn" id="bInfo">Print model info</button>
-          </div>
-          <div class="note">Calibrate only in <b>clear air</b> with the laser aligned. It is refused when humidity &gt; 85 %, the signal is unstable or weak, or the receiver is saturated.</div>
-          <div id="simBox" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)">
-            <label class="f" style="max-width:420px">Simulator scenario<select id="scn"></select></label>
-          </div>
+        <div class="card p" id="simBox" hidden style="grid-column:1/-1"><h2>Simulator <small>what the simulated world looks like</small></h2>
+          <label class="f" style="max-width:420px">Scenario<select id="scn"></select></label>
         </div>
-        <div class="card p"><h2>AI probabilities &amp; attenuation <span class="sp"></span><span class="seg" id="winA"></span></h2>
+        <div class="card p" style="grid-column:1/-1"><h2>AI probabilities &amp; attenuation <span class="sp"></span><span class="seg" id="winA"></span></h2>
           <canvas class="chart" id="chLive"></canvas><div class="legend" id="lgLive"></div></div>
       </div>
       <div class="card p"><h2>History <span class="sp"></span><span class="seg" id="winB"></span></h2>
@@ -689,7 +680,7 @@ function banners() {
   if (!sm) return out.concat([["info", "Waiting for the first sample (the Uno restarts when the port opens, ~3 s)."]]);
   if (!L.hasStatus) out.push(["warn", "This firmware does not send the status line (S). Re-upload firmware/fog_illumination_uno to get mode and health."]);
   if (sm.demo) out.push(["info", "Demo mode: the lights cycle CLEAR → LIGHT → DENSE → FAULT every 5 s and ignore the sensors."]);
-  if (st && !st.calibrated) out.push(["warn", "Not calibrated: the lights never go below LIGHT FOG. Calibrate in clear air (Controls)."]);
+  if (st && !st.calibrated) out.push(["warn", "Not calibrated: the lights never go below LIGHT FOG. Calibrate in clear air (Calibration page)."]);
   if (sm.fault & 2) out.push(["bad", "Laser fault: signal < 5 % of baseline although the air is dry — beam blocked or misaligned. All lights blink (fail-safe)."]);
   if (sm.fault & 1) out.push(st && st.calibrated ? ["warn", "DHT11 lost (common in fog): running on the laser. The status LED blinks fast."] : ["bad", "DHT11 fault before calibration: all lights blink (fail-safe)."]);
   if (st && st.dhtFails && !(sm.fault & 1)) out.push(["info", `DHT11 read failed ${st.dhtFails}× (fault after 3).`]);
@@ -768,10 +759,6 @@ function render() {
     ["LDR (ADC)", rw.ldr], ["Receiver A1, laser OFF (ADC)", rw.rxOff], ["Receiver A1, laser ON (ADC)", rw.rxOn], ["ON − OFF (laser signal)", rw.rxOn - rw.rxOff]]
     .map(r => `<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("") : '<div class="empty">No raw line yet (re-upload the firmware).</div>';
 
-  // controls
-  const demo = !!(sm && sm.demo);
-  $("bDemo").textContent = demo ? "Demo mode: ON (click to stop)" : "Demo mode"; $("bDemo").classList.toggle("on", demo);
-  ["bCal", "bDemo", "bPage", "bInfo"].forEach(id => $(id).disabled = !L.mode);
 
   renderSettings(); renderRecord(); updateScene(); drawCharts();
   if (S.logSeq !== logSeq) loadLogs();
@@ -896,10 +883,7 @@ $("drvScan").onclick = () => { $("drvScan").disabled = true; act("/api/drivers/r
 $("drvHintLink").onclick = e => { e.preventDefault(); document.querySelector('#nav button[data-p="settings"]').click(); };
 
 /* controls */
-$("bCal").onclick = () => { if (confirm("Calibrate the laser now?\n\nThe air between laser and receiver must be CLEAR (no fog, nothing in the beam).")) act("/api/command", { cmd: "calibrate" }, "Calibrating… watch the Events log"); };
-$("bDemo").onclick = () => act("/api/command", { cmd: "demo", value: !(S.sample && S.sample.demo) });
-$("bPage").onclick = () => act("/api/command", { cmd: "page" }, "Next LCD page");
-$("bInfo").onclick = () => { act("/api/command", { cmd: "info" }, "Model info → Serial messages"); };
+const calibrateNow = () => { if (confirm("Calibrate the laser now?\n\nThe air between laser and receiver must be CLEAR (no fog, nothing in the beam).")) act("/api/command", { cmd: "calibrate" }, "Calibrating… watch the Events log"); };
 
 /* ---------------------------------------------------------------- record + logs */
 function renderRecord() {
@@ -1124,7 +1108,7 @@ function startUpload(from, compileOnly) {
 $("cLdrLoCap").onclick = () => { if (!S.sample) return toast("No reading yet."); CALIN.ldrLo = S.sample.light_raw; fillCalInputs(); renderCalibration(); };
 $("cLdrHiCap").onclick = () => { if (!S.sample) return toast("No reading yet."); CALIN.ldrHi = S.sample.light_raw; fillCalInputs(); renderCalibration(); };
 $("cLdrReset").onclick = () => { CALIN.ldrLo = 0; CALIN.ldrHi = 1023; fillCalInputs(); renderCalibration(); };
-$("cLaCal").onclick = () => $("bCal").click();
+$("cLaCal").onclick = calibrateNow;
 $("calSave").onclick = () => saveCal().catch(() => {});
 $("calUpload").onclick = () => saveCal().then(() => startUpload("cal", false)).catch(() => {});
 $("calCompile").onclick = () => startUpload("cal", true).catch(() => {});
