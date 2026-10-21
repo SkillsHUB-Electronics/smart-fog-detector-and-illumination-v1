@@ -58,4 +58,5 @@
 #define LCD_PAGES           5  // 0 state, 1 climate, 2 laser, 3 AI probabilities, 4 light + fog condition
 #define LCD_PAGE_MS      3000  // automatic page rotation
 #define LCD_MANUAL_MS   15000  // after a button press, stay on that page this long
+#define IO_TEST_MS      30000  // Test IO page: manual outputs return to automatic after this long
 #define DEMO_STEP_MS     5000  // demo mode: time per state

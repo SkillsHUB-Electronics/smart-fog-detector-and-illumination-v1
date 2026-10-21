@@ -14,6 +14,7 @@
 //  Serial commands (115200 baud, Serial Monitor "No line ending" or any):
 //    c = calibrate (clear air)   d = demo mode on/off   p = next LCD page
 //    i = info (model + calibration)   h = help
+//  Line commands: !get  !reset  !set key=value  !io led=N|status=0/1|laser=1|lcd=1|off (Test IO)
 // ============================================================================
 #include <EEPROM.h>
 #include <Wire.h>
@@ -32,7 +33,9 @@ static const char *const STATE_NAME[4] = {"CLEAR", "LIGHT FOG", "DENSE FOG", "FA
 enum { LT_DAY = 0, LT_TWILIGHT = 1, LT_NIGHT = 2 };
 static const char *const LIGHT_NAME[3] = {"Day", "Twilight", "Night"};
 static const char *const FOG_SHORT[3] = {"Clear", "L.Mist", "Dense"};
-static const char *const FEATURE_NAME[MODEL_N_FEATURES] = {"temp", "humidity", "dew_spread", "light", "attenuation"};
+// Feature names live in flash (only printInfo uses them): saves ~55 bytes of RAM.
+static const char FN0[] PROGMEM = "temp", FN1[] PROGMEM = "humidity", FN2[] PROGMEM = "dew_spread", FN3[] PROGMEM = "light", FN4[] PROGMEM = "attenuation";
+static const char *const FEATURE_NAME[MODEL_N_FEATURES] PROGMEM = {FN0, FN1, FN2, FN3, FN4};
 
 #define FAULT_DHT   1
 #define FAULT_LASER 2
@@ -77,6 +80,9 @@ uint8_t chasePos = 0;
 uint32_t lastStep = 0;
 uint16_t shownPattern = 0xFFFF;
 uint8_t lcdPage = 0;
+bool ioTest = false, ioStatus = false;  // Test IO: outputs held by hand
+uint16_t ioMask = 0;
+uint32_t ioUntil = 0;
 uint32_t lastPageFlip = 0, manualUntil = 0;
 char msg0[17] = "", msg1[17] = "";
 uint32_t msgUntil = 0;
@@ -500,6 +506,14 @@ uint8_t currentMode() {
 }
 
 void updateLights(uint32_t now) {
+  if (ioTest) {
+    if ((int32_t)(now - ioUntil) < 0) {
+      writePattern(ioMask);
+      digitalWrite(PIN_STATUS, ioStatus);
+      return;
+    }
+    ioTest = false;  // no command for IO_TEST_MS: back to automatic
+  }
   uint8_t mode = currentMode();
   uint16_t pattern = 0;
   if (mode == MODE_FAULT) {
@@ -628,7 +642,7 @@ void printInfo() {
     Serial.print(F("# W[")); Serial.print(STATE_NAME[k]); Serial.print(F("] b="));
     Serial.print(MODEL_B[k], 3);
     for (uint8_t i = 0; i < MODEL_N_FEATURES; i++) {
-      Serial.print(' '); Serial.print(FEATURE_NAME[i]); Serial.print('=');
+      Serial.print(' '); Serial.print((const __FlashStringHelper *)pgm_read_ptr(&FEATURE_NAME[i])); Serial.print('=');
       Serial.print(MODEL_W[k][i], 3);
     }
     Serial.println();
@@ -640,9 +654,30 @@ void printHelp() {
   Serial.println(F("# Settings: !get  !reset  !set key=value  (see README.id.md)"));
 }
 
+// Test IO: hold one output by hand (the dashboard's Test IO page). Returns to automatic after IO_TEST_MS.
+void handleIo(char *s) {
+  if (!strcmp(s, "off")) { ioTest = false; Serial.println(F("# IO off")); return; }
+  char *eq = strchr(s, '=');
+  if (!eq) { Serial.println(F("# ERR bad io command")); return; }
+  *eq = 0;
+  long v = atol(eq + 1);
+  if (!strcmp(s, "led")) { ioMask = (uint16_t)v & ((1U << NUM_LEDS) - 1); ioTest = true; Serial.print(F("# IO led=")); Serial.println(ioMask); }
+  else if (!strcmp(s, "status")) { ioStatus = v != 0; ioTest = true; Serial.print(F("# IO status=")); Serial.println(ioStatus ? 1 : 0); }
+  else if (!strcmp(s, "laser")) {
+    digitalWrite(PIN_LASER, HIGH);
+    delay(1500);
+    digitalWrite(PIN_LASER, LOW);
+    Serial.println(F("# IO laser pulsed 1.5 s"));
+  }
+  else if (!strcmp(s, "lcd")) { showMessage("LCD TEST OK", "0123456789ABCDEF", 3000); Serial.println(F("# IO lcd")); }
+  else { Serial.println(F("# ERR bad io command")); return; }
+  ioUntil = millis() + IO_TEST_MS;
+}
+
 // Line commands start with '!' (single letters below keep working):
-//   !get   !reset   !set key=value
+//   !get   !reset   !set key=value   !io ...
 void handleLine(char *s) {
+  if (!strncmp(s, "io ", 3)) { handleIo(s + 3); return; }
   if (!strcmp(s, "get")) { printCfg(); printCal(); return; }
   if (!strcmp(s, "reset")) { cfgDefaults(); EEPROM.put(CFG_ADDR, cfg); printCfg(); return; }
   if (!strncmp(s, "set ", 4)) {

@@ -425,7 +425,28 @@ class FogSim:
         self._p(f"R,{self.now},{fmt(self.raw_t, 1)},{fmt(self.raw_h, 1)},{ldr},{off},{on}")
 
     # ------------------------------------------------------------- serial input (same parser as handleSerial)
+    def _handle_io(self, s):
+        """Test IO commands: the simulator has no LEDs, LCD or laser, so it only answers like the firmware."""
+        if s == "off":
+            return self._p("# IO off")
+        if "=" not in s:
+            return self._p("# ERR bad io command")
+        k, v = s.split("=", 1)
+        n = int(float(v)) if re.match(r"^-?\d+(\.\d*)?$", v.strip()) else 0  # atol()
+        if k == "led":
+            self._p(f"# IO led={n & ((1 << self.cfgh['NUM_LEDS']) - 1)}")
+        elif k == "status":
+            self._p(f"# IO status={1 if n else 0}")
+        elif k == "laser":
+            self._p("# IO laser pulsed 1.5 s")
+        elif k == "lcd":
+            self._p("# IO lcd")
+        else:
+            self._p("# ERR bad io command")
+
     def _handle_line(self, s):
+        if s.startswith("io "):
+            return self._handle_io(s[3:])
         if s == "get":
             self._print_cfg()
             return self._print_cal()
