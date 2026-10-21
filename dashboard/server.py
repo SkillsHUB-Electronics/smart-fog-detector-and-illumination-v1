@@ -751,6 +751,15 @@ class Handler(BaseHTTPRequestHandler):
                     line = "laser=1"
                 elif d.get("lcd"):
                     line = "lcd=1"
+                elif "line1" in d or "line2" in d:  # custom LCD text: 16 printable ASCII chars per row
+                    for key, row in (("line1", 0), ("line2", 1)):
+                        txt = "".join(c for c in str(d.get(key, "")) if " " <= c <= "~")[:16]
+                        HUB.queue_tx(f"!io lcd{row}={txt}\n")
+                    return self._json({"ok": True})
+                elif d.get("lcdclear"):
+                    line = "lcdclear=1"
+                elif "backlight" in d:
+                    line = f"backlight={1 if d['backlight'] else 0}"
                 elif d.get("off"):
                     line = "off"
                 else:

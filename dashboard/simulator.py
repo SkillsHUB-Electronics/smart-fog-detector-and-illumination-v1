@@ -433,6 +433,12 @@ class FogSim:
             return self._p("# ERR bad io command")
         k, v = s.split("=", 1)
         n = int(float(v)) if re.match(r"^-?\d+(\.\d*)?$", v.strip()) else 0  # atol()
+        if k in ("lcd0", "lcd1"):
+            return self._p(f"# IO {k[:4]} set")
+        if k == "backlight":
+            return self._p(f"# IO backlight={1 if n else 0}")
+        if k == "lcdclear":
+            return self._p("# IO lcdclear")
         if k == "led":
             self._p(f"# IO led={n & ((1 << self.cfgh['NUM_LEDS']) - 1)}")
         elif k == "status":

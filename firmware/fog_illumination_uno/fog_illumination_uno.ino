@@ -14,7 +14,7 @@
 //  Serial commands (115200 baud, Serial Monitor "No line ending" or any):
 //    c = calibrate (clear air)   d = demo mode on/off   p = next LCD page
 //    i = info (model + calibration)   h = help
-//  Line commands: !get  !reset  !set key=value  !io led=N|status=0/1|laser=1|lcd=1|off (Test IO)
+//  Line commands: !get  !reset  !set key=value  !io led=N|status=0/1|laser=1|lcd=1|lcd0=text|lcd1=text|lcdclear=1|backlight=0/1|off (Test IO)
 // ============================================================================
 #include <EEPROM.h>
 #include <Wire.h>
@@ -24,7 +24,7 @@
 #include "model_weights.h"
 #include "calibration.h"
 
-#define FW_VERSION "1.0.0"
+#define FW_VERSION "1.1.0"
 
 LiquidCrystal_I2C lcd(LCD_I2C_ADDR, 16, 2);
 
@@ -656,11 +656,20 @@ void printHelp() {
 
 // Test IO: hold one output by hand (the dashboard's Test IO page). Returns to automatic after IO_TEST_MS.
 void handleIo(char *s) {
-  if (!strcmp(s, "off")) { ioTest = false; Serial.println(F("# IO off")); return; }
+  if (!strcmp(s, "off")) { ioTest = false; msgUntil = 0; lcd.backlight(); Serial.println(F("# IO off")); return; }
   char *eq = strchr(s, '=');
   if (!eq) { Serial.println(F("# ERR bad io command")); return; }
   *eq = 0;
   long v = atol(eq + 1);
+  if (s[0] == 'l' && s[1] == 'c' && s[2] == 'd' && (s[3] == '0' || s[3] == '1') && !s[4]) {  // lcd0=text / lcd1=text
+    char *m = (s[3] == '0') ? msg0 : msg1;
+    strncpy(m, eq + 1, 16); m[16] = 0;
+    msgUntil = millis() + IO_TEST_MS;
+    lcdLine(s[3] - '0', m);
+    ioUntil = millis() + IO_TEST_MS;
+    Serial.print(F("# IO lcd")); Serial.print(s[3]); Serial.println(F(" set"));
+    return;
+  }
   if (!strcmp(s, "led")) { ioMask = (uint16_t)v & ((1U << NUM_LEDS) - 1); ioTest = true; Serial.print(F("# IO led=")); Serial.println(ioMask); }
   else if (!strcmp(s, "status")) { ioStatus = v != 0; ioTest = true; Serial.print(F("# IO status=")); Serial.println(ioStatus ? 1 : 0); }
   else if (!strcmp(s, "laser")) {
@@ -669,6 +678,8 @@ void handleIo(char *s) {
     digitalWrite(PIN_LASER, LOW);
     Serial.println(F("# IO laser pulsed 1.5 s"));
   }
+  else if (!strcmp(s, "backlight")) { if (v) lcd.backlight(); else lcd.noBacklight(); Serial.print(F("# IO backlight=")); Serial.println(v ? 1 : 0); }
+  else if (!strcmp(s, "lcdclear")) { msg0[0] = msg1[0] = 0; msgUntil = millis() + IO_TEST_MS; lcdLine(0, ""); lcdLine(1, ""); Serial.println(F("# IO lcdclear")); }
   else if (!strcmp(s, "lcd")) { showMessage("LCD TEST OK", "0123456789ABCDEF", 3000); Serial.println(F("# IO lcd")); }
   else { Serial.println(F("# ERR bad io command")); return; }
   ioUntil = millis() + IO_TEST_MS;

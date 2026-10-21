@@ -126,6 +126,15 @@ select,input{max-width:100%}
 .tag{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600}
 .tag.ok{background:var(--green-soft);color:var(--green)}.tag.warn{background:var(--amber-soft);color:var(--amber)}.tag.bad{background:var(--red-soft);color:var(--red)}.tag.off{background:var(--bd-2);color:var(--tx-3)}.tag.info{background:var(--cyan-soft);color:var(--cyan)}
 .ctl{display:flex;flex-wrap:wrap;gap:10px}
+.lcdlbl{display:block;margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--tx-2)}
+.lcdin{position:relative}.lcdin input{width:100%;padding-right:52px;font-weight:600}
+.lcdin small{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--tx-2);font-size:12px}
+.lcdsw{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12.5px;font-weight:600;color:var(--tx-2);cursor:pointer}
+.lcdsw input{position:absolute;opacity:0;width:0;height:0}
+.lcdsw i{width:46px;height:26px;border-radius:13px;background:var(--bd);position:relative;transition:background .15s}
+.lcdsw i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.lcdsw input:checked+i{background:var(--blue)}.lcdsw input:checked+i::after{transform:translateX(20px)}
+.lcdsw input:focus-visible+i{outline:2px solid var(--blue-soft)}
 .note{font-size:12px;color:var(--tx-3);line-height:1.5;margin-top:10px}
 canvas.chart{width:100%;height:210px;display:block}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--tx-2);margin-top:8px}
@@ -442,7 +451,7 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
         <div style="overflow:auto"><table><tr><th>Direction</th><th>Text</th><th>Meaning</th></tr>
           <tr><td>PC → Uno</td><td><code>c d p i h</code></td><td>calibrate · demo on/off · next LCD page · info · help</td></tr>
           <tr><td>PC → Uno</td><td><code>!get</code> <code>!set key=value</code> <code>!reset</code></td><td>read / write / restore the settings above</td></tr>
-          <tr><td>PC → Uno</td><td><code>!io led=N</code> <code>!io status=0|1</code> <code>!io laser=1</code> <code>!io lcd=1</code> <code>!io off</code></td><td>Test IO: hold the LEDs (bit mask), status LED, pulse the laser, show an LCD test text, back to automatic (also after 30 s)</td></tr>
+          <tr><td>PC → Uno</td><td><code>!io led=N</code> <code>!io status=0|1</code> <code>!io laser=1</code> <code>!io lcd=1</code> <code>!io off</code></td><td>Test IO: hold the LEDs (bit mask), status LED, pulse the laser, show an LCD test text, <code>lcd0=text</code> <code>lcd1=text</code> <code>lcdclear=1</code> <code>backlight=0|1</code> custom LCD text and backlight, back to automatic (also after 30 s)</td></tr>
           <tr><td>Uno → PC</td><td><code>H,…</code> <code>D,…</code></td><td>CSV header and one sample per second (same as the recorder)</td></tr>
           <tr><td>Uno → PC</td><td><code>S,mode,calibrated,dhtFails,rxSat,light,pDay,pTwilight,pNight</code></td><td>output mode (0 clear, 1 light, 2 dense, 3 fault), health, light class (0 day, 1 twilight, 2 night) and its probabilities</td></tr>
           <tr><td>Uno → PC</td><td><code>R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn</code></td><td>raw sensor values before calibration, averaging and laser OFF/ON subtraction</td></tr>
@@ -461,16 +470,20 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
     <!-- ============================ TEST IO ============================ -->
     <section class="page" id="page-testio">
       <div class="card p"><h2>Test IO <small>drive the outputs by hand; the board returns to automatic after 30 s without a command</small>
-          <span class="sp"></span><button class="btn sm" id="ioOff">Back to automatic</button></h2>
+          <span class="sp"></span><button class="btn sm" id="ioToggle">Start test</button></h2>
         <div class="bn info" id="ioNote">Connect to the board (or the simulator) first.</div></div>
       <div class="grid g2">
         <div class="card p"><h2>Guide lights <small>74HC595 · LED1 = Q0</small></h2>
           <div class="iogrid" id="ioLeds"></div>
-          <div class="ctl" style="margin-top:12px"><button class="btn sm" id="ioAll">All on</button><button class="btn sm" id="ioNone">All off</button><button class="btn sm" id="ioSweep">Sweep once</button></div></div>
-        <div class="card p"><h2>Status LED &amp; LCD</h2>
-          <div class="ctl"><button class="btn" id="ioStOn">Status LED on</button><button class="btn" id="ioStOff">Status LED off</button></div>
-          <div class="ctl" style="margin-top:10px"><button class="btn" id="ioLcd">Show LCD test text</button><button class="btn" id="ioPage">Next LCD page</button></div>
-          <div class="note">The LCD test shows <code>LCD TEST OK</code> for 3 s. A blank screen: try I2C address 0x3F in config.h and check the contrast trimmer.</div></div>
+          <div class="ctl" style="margin-top:12px"><button class="btn sm" id="ioAll">All on</button><button class="btn sm" id="ioNone">All off</button><button class="btn sm" id="ioSweep">Sweep once</button><button class="btn sm" id="ioStOn">Status LED on</button><button class="btn sm" id="ioStOff">Status LED off</button></div></div>
+        <div class="card p"><h2>LCD</h2>
+          <label class="lcdlbl" for="lcdL1">Line 1</label>
+          <div class="lcdin"><input type="text" id="lcdL1" maxlength="16"><small id="lcdC1">0/16</small></div>
+          <label class="lcdlbl" for="lcdL2">Line 2</label>
+          <div class="lcdin"><input type="text" id="lcdL2" maxlength="16"><small id="lcdC2">0/16</small></div>
+          <div class="ctl" style="margin-top:14px;align-items:center"><button class="btn" id="lcdSend">&#10148; Send to LCD</button><button class="btn" id="lcdClear">Clear</button>
+            <label class="lcdsw"><span>Backlight</span><input type="checkbox" id="lcdBl" checked><i></i></label></div>
+          <div class="note">The text stays on the LCD until you press Stop or 30 s pass without a command.</div></div>
         <div class="card p"><h2>Laser &amp; receiver</h2>
           <div class="ctl"><button class="btn" id="ioLaser">Pulse laser 1.5 s</button></div>
           <div class="rows" id="ioRx" style="margin-top:10px"></div>
@@ -1215,11 +1228,11 @@ let ioMask = 0;
 function ioSend(body) { return act("/api/io", body).catch(() => {}); }
 function ioDraw() {
   $("ioLeds").innerHTML = [...Array(8).keys()].map(i => `<button data-i="${i}" class="${ioMask >> i & 1 ? "on" : ""}">${i + 1}</button>`).join("");
-  $("ioLeds").querySelectorAll("button").forEach(b => b.onclick = () => { ioMask ^= 1 << +b.dataset.i; ioDraw(); ioSend({ led: ioMask }); });
+  $("ioLeds").querySelectorAll("button").forEach(b => { b.disabled = !$("ioToggle").dataset.run; b.onclick = () => { ioMask ^= 1 << +b.dataset.i; ioDraw(); ioSend({ led: ioMask }); }; });
 }
 function ioRender() {
   const on = !!(S && S.link.mode);
-  document.querySelectorAll("#page-testio button").forEach(b => b.disabled = !on);
+  document.querySelectorAll("#page-testio button").forEach(b => b.disabled = !on || (b.id !== "ioToggle" && !$("ioToggle").dataset.run));
   $("ioNote").className = "bn " + (on ? "ok" : "info");
   $("ioNote").textContent = on ? (S.link.mode === "sim" ? "Simulator connected: it has no LEDs and only answers the commands." : "Connected: the buttons drive the real outputs.") : "Connect to the board (or the simulator) first.";
   const rw = S && S.raw, d = rw ? rw.rxOn - rw.rxOff : null, tag = (t, c) => `<span class="tag ${c}">${t}</span>`;
@@ -1232,9 +1245,22 @@ $("ioAll").onclick = () => { ioMask = 255; ioDraw(); ioSend({ led: 255 }); };
 $("ioNone").onclick = () => { ioMask = 0; ioDraw(); ioSend({ led: 0 }); };
 $("ioSweep").onclick = async () => { for (let i = 0; i < 8; i++) { ioMask = 1 << i; ioDraw(); await ioSend({ led: ioMask }); await new Promise(r => setTimeout(r, 250)); } ioMask = 0; ioDraw(); ioSend({ led: 0 }); };
 $("ioStOn").onclick = () => ioSend({ status: 1 }); $("ioStOff").onclick = () => ioSend({ status: 0 });
-$("ioLcd").onclick = () => ioSend({ lcd: 1 }); $("ioPage").onclick = () => act("/api/command", { cmd: "page" }).catch(() => {});
 $("ioLaser").onclick = () => ioSend({ laser: 1 });
-$("ioOff").onclick = () => { ioMask = 0; ioDraw(); ioSend({ off: 1 }); };
+/* Start test / Stop: the outputs only answer while a test runs; the board falls back to automatic after 30 s, so a keep-alive resends the LED mask. */
+let ioTimer = null;
+function ioSetRunning(r) {
+  clearInterval(ioTimer); ioTimer = r ? setInterval(() => ioSend({ led: ioMask }), 10000) : null;
+  $("ioToggle").textContent = r ? "Stop" : "Start test"; $("ioToggle").dataset.run = r ? 1 : "";
+  ioDraw(); ioRender();
+}
+$("ioToggle").onclick = async () => {
+  if ($("ioToggle").dataset.run) { ioMask = 0; await ioSend({ off: 1 }); $("lcdBl").checked = true; ioSetRunning(false); }
+  else { ioMask = 0; await ioSend({ led: 0 }); ioSetRunning(true); }
+};
+for (const n of [1, 2]) $("lcdL" + n).oninput = () => { $("lcdC" + n).textContent = $("lcdL" + n).value.length + "/16"; };
+$("lcdSend").onclick = () => ioSend({ line1: $("lcdL1").value, line2: $("lcdL2").value });
+$("lcdClear").onclick = () => { for (const n of [1, 2]) { $("lcdL" + n).value = ""; $("lcdC" + n).textContent = "0/16"; } ioSend({ lcdclear: 1 }); };
+$("lcdBl").onchange = () => ioSend({ backlight: $("lcdBl").checked ? 1 : 0 });
 ioDraw();
 
 /* ---------------------------------------------------------------- author (project team, editable) */
