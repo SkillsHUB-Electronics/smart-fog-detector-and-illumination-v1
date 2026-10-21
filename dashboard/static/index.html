@@ -126,6 +126,10 @@ select,input{max-width:100%}
 .tag{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600}
 .tag.ok{background:var(--green-soft);color:var(--green)}.tag.warn{background:var(--amber-soft);color:var(--amber)}.tag.bad{background:var(--red-soft);color:var(--red)}.tag.off{background:var(--bd-2);color:var(--tx-3)}.tag.info{background:var(--cyan-soft);color:var(--cyan)}
 .ctl{display:flex;flex-wrap:wrap;gap:10px}
+.pins{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.pin{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card)}
+.pin>div{min-width:0}.pin b{display:block;font-size:13px}.pin small{display:block;color:var(--tx-2);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pin span{flex:none;padding:3px 9px;border-radius:7px;background:var(--blue-soft);color:var(--blue);font-weight:700;font-size:12px}
 .tabs{display:flex;gap:6px;padding:6px;margin-bottom:16px}
 .tabs button{flex:1;border:0;background:transparent;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:600;color:var(--tx-2);cursor:pointer}
 .tabs button.on{background:var(--blue);color:#fff}
@@ -439,9 +443,9 @@ nav hr{border:0;border-top:1px solid var(--side-2);margin:8px 6px;width:calc(100
         </div>
         <div class="note">Defaults come from <code>firmware/fog_illumination_uno/config.h</code>. Wiring, thresholds of the fault rules and the AI weights are compile-time: change them there (or with <code>TRAIN_MODEL.bat</code>) and re-upload.</div></div>
 
-      <div class="card p" id="wiringCard" data-st="wiring"><h2>Wiring <small>matches <code>config.h</code></small><span class="sp"></span><a class="btn sm" href="/docs/wiring_diagram.svg" target="_blank" rel="noopener">Open full size ↗</a></h2>
-        <div style="background:#fff;border-radius:10px;padding:8px;overflow:auto"><img src="/docs/wiring_diagram.svg" alt="Wiring diagram" style="width:100%;min-width:560px;height:auto;display:block"></div>
-        <div style="overflow:auto;margin-top:12px"><table id="pinTable"><tr><th>Signal</th><th>Pin</th><th>Notes</th></tr></table></div>
+      <div class="card p" id="wiringCard" data-st="wiring"><h2>Wiring Diagram <small>matches <code>config.h</code></small><span class="sp"></span><button class="btn sm" id="wrZoom">Zoom 100%</button><a class="btn sm" href="/docs/wiring_diagram.svg" target="_blank" rel="noopener">Open in new tab</a></h2>
+        <div class="pins" id="pinTable"></div>
+        <div style="background:#fff;border-radius:10px;padding:8px;overflow:auto;margin-top:12px"><img id="wrImg" src="/docs/wiring_diagram.svg" alt="Wiring diagram" style="width:100%;min-width:560px;height:auto;display:block"></div>
         <div class="note">Also: <a href="/docs/block_diagram.svg" target="_blank" rel="noopener">block diagram ↗</a> · <a href="/docs/flowchart.svg" target="_blank" rel="noopener">flowchart ↗</a>.
           D0/D1 are the USB serial port: keep them free.</div></div>
 
@@ -1230,7 +1234,7 @@ async function loadPins() {
   if (PINS_LOADED) return;
   const pins = await api("/api/pins").catch(() => null); if (!pins) return;
   PINS_LOADED = true;
-  $("pinTable").innerHTML = "<tr><th>Signal</th><th>Pin</th><th>Notes</th></tr>" + pins.map(p => `<tr><td><code>${p.name}</code></td><td class="num">${p.pin}</td><td>${esc(p.note)}</td></tr>`).join("");
+  $("pinTable").innerHTML = pins.map(p => `<div class="pin" title="${esc(p.note)}"><div><b>${esc(p.name.replace(/^PIN_/, ""))}</b><small>${esc(p.note)}</small></div><span>${p.pin}</span></div>`).join("");
 }
 document.querySelectorAll("#nav button").forEach(b => b.addEventListener("click", () => {
   const p = b.dataset.p;
@@ -1256,6 +1260,8 @@ $("fwCheck").onclick = async () => { await loadPorts(); await loadFw(); const L 
   toast(!L.mode ? "No device connected." : L.mode === "sim" ? "Simulator connected." : L.fw && FWP && L.fw !== FWP.project ? `Device firmware ${L.fw} differs from the project ${FWP.project}: upload.` : `Device ${L.port} answers, firmware ${L.fw || "?"}.`); };
 $("fwCompile").onclick = () => startUpload("fw", true).catch(() => {});
 $("fwUpload").onclick = () => startUpload("fw", false).catch(() => {});
+const WR_ZOOM = [100, 150, 200]; let wrZ = 0;
+$("wrZoom").onclick = () => { wrZ = (wrZ + 1) % WR_ZOOM.length; $("wrImg").style.width = WR_ZOOM[wrZ] + "%"; $("wrZoom").textContent = "Zoom " + WR_ZOOM[wrZ] + "%"; };
 document.querySelectorAll("#setTabs button").forEach(b => b.onclick = () => {
   $("page-settings").dataset.t = b.dataset.t;
   document.querySelectorAll("#setTabs button").forEach(x => x.classList.toggle("on", x === b));
