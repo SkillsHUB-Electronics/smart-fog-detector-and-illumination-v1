@@ -24,9 +24,12 @@
 #include "model_weights.h"
 #include "calibration.h"
 
-#define FW_VERSION "1.1.0"
+#define FW_VERSION "1.2.0"
 
 LiquidCrystal_I2C lcd(LCD_I2C_ADDR, 16, 2);
+
+// true = no LCD answered on I2C. Every LCD call is skipped then, so the rest of the program runs normally.
+bool lcdDown = true;
 
 enum { ST_CLEAR = 0, ST_LIGHT = 1, ST_DENSE = 2, MODE_FAULT = 3 };
 static const char *const STATE_NAME[4] = {"CLEAR", "LIGHT FOG", "DENSE FOG", "FAULT"};
@@ -106,6 +109,16 @@ float clampf(float x, float lo, float hi) { return x < lo ? lo : (x > hi ? hi : 
 void updateLights(uint32_t now);
 bool holdLights = false;
 
+bool lcdProbe() {
+  Wire.beginTransmission(LCD_I2C_ADDR);
+  return Wire.endTransmission() == 0;
+}
+
+void lcdBacklight(bool on) {
+  if (lcdDown) return;
+  if (on) lcd.backlight(); else lcd.noBacklight();
+}
+
 void waitMs(uint16_t ms) {
   uint32_t t0 = millis();
   do {
@@ -114,6 +127,7 @@ void waitMs(uint16_t ms) {
 }
 
 void lcdLine(uint8_t row, const char *s) {
+  if (lcdDown) return;
   lcd.setCursor(0, row);
   uint8_t i = 0;
   for (; s[i] && i < 16; i++) lcd.write(s[i]);
@@ -589,11 +603,8 @@ void drawLcd(uint32_t now) {
 
 // The PCF8574 backpack can lose its state (LED switching noise, loose wire). A missing ACK means the
 // LCD is gone; when it answers again it is re-initialised, otherwise it would stay blank or garbled.
-bool lcdDown = false;
-
 void lcdWatch() {
-  Wire.beginTransmission(LCD_I2C_ADDR);
-  bool ok = Wire.endTransmission() == 0;
+  bool ok = lcdProbe();
   if (ok && lcdDown) {
     lcd.init();
     lcd.backlight();
@@ -656,7 +667,7 @@ void printHelp() {
 
 // Test IO: hold one output by hand (the dashboard's Test IO page). Returns to automatic after IO_TEST_MS.
 void handleIo(char *s) {
-  if (!strcmp(s, "off")) { ioTest = false; msgUntil = 0; lcd.backlight(); Serial.println(F("# IO off")); return; }
+  if (!strcmp(s, "off")) { ioTest = false; msgUntil = 0; lcdBacklight(true); Serial.println(F("# IO off")); return; }
   char *eq = strchr(s, '=');
   if (!eq) { Serial.println(F("# ERR bad io command")); return; }
   *eq = 0;
@@ -678,7 +689,7 @@ void handleIo(char *s) {
     digitalWrite(PIN_LASER, LOW);
     Serial.println(F("# IO laser pulsed 1.5 s"));
   }
-  else if (!strcmp(s, "backlight")) { if (v) lcd.backlight(); else lcd.noBacklight(); Serial.print(F("# IO backlight=")); Serial.println(v ? 1 : 0); }
+  else if (!strcmp(s, "backlight")) { lcdBacklight(v != 0); Serial.print(F("# IO backlight=")); Serial.println(v ? 1 : 0); }
   else if (!strcmp(s, "lcdclear")) { msg0[0] = msg1[0] = 0; msgUntil = millis() + IO_TEST_MS; lcdLine(0, ""); lcdLine(1, ""); Serial.println(F("# IO lcdclear")); }
   else if (!strcmp(s, "lcd")) { showMessage("LCD TEST OK", "0123456789ABCDEF", 3000); Serial.println(F("# IO lcd")); }
   else { Serial.println(F("# ERR bad io command")); return; }
@@ -741,8 +752,9 @@ void setup() {
 #ifdef WIRE_HAS_TIMEOUT
   Wire.setWireTimeout(3000, true);  // a stuck I2C bus must not freeze the loop
 #endif
-  lcd.init();
-  lcd.backlight();
+  lcdDown = !lcdProbe();
+  if (!lcdDown) { lcd.init(); lcd.backlight(); }
+  else Serial.println(F("# LCD not found, running without it"));
   showMessage("Fog Lane Light", "v" FW_VERSION " booting", 1500);
 
   // Lamp test: sweep every LED once
