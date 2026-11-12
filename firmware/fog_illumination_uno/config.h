@@ -31,12 +31,6 @@
 #define STEP_MS_DENSE  300  // chase step in DENSE FOG (slower = "slow down")
 #define FAULT_BLINK_MS 400  // all LEDs blink together when a sensor has failed
 
-// Brightness 0..255 (applied through OE PWM)
-#define BRIGHT_LIGHT   150
-#define BRIGHT_DENSE   255
-#define NIGHT_LIGHT   0.20  // ambient light feature below this = night
-#define NIGHT_SCALE     60  // % brightness at night (less glare in fog)
-
 // ---------------- Sampling --------------------------------------------------
 #define SAMPLE_MS        1000  // sensors + AI decision + CSV line
 #define DHT_EVERY_MS     2000  // DHT11 must not be read faster than 1 Hz
@@ -61,6 +55,8 @@
 // ---------------- User interface --------------------------------------------
 #define LONG_PRESS_MS    2000
 #define LCD_REFRESH_MS    500
+#define LCD_PAGES           5  // 0 state, 1 climate, 2 laser, 3 AI probabilities, 4 light + fog condition
 #define LCD_PAGE_MS      3000  // automatic page rotation
 #define LCD_MANUAL_MS   15000  // after a button press, stay on that page this long
+#define IO_TEST_MS      30000  // Test IO page: manual outputs return to automatic after this long
 #define DEMO_STEP_MS     5000  // demo mode: time per state

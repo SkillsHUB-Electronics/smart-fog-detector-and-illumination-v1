@@ -9,9 +9,9 @@
 //    humidity [%RH]     = DHT11 reading * CAL_HUM_GAIN  + CAL_HUM_OFFSET   (limited to 1..100)
 //  The laser baseline is stored in EEPROM (calibrate with the CAL button), not here.
 // ============================================================================
-#define CAL_LDR_LO      0      // LDR reading (ADC counts) in the darkest condition  -> 0 %
+#define CAL_LDR_LO      0   // LDR reading (ADC counts) in the darkest condition  -> 0 %
 #define CAL_LDR_HI      1023   // LDR reading (ADC counts) in the brightest condition -> 100 %
-#define CAL_TEMP_GAIN   1.0f
-#define CAL_TEMP_OFFSET 0.0f
-#define CAL_HUM_GAIN    1.0f
-#define CAL_HUM_OFFSET  0.0f
+#define CAL_TEMP_GAIN   1.0000f
+#define CAL_TEMP_OFFSET 0.0000f
+#define CAL_HUM_GAIN    1.0000f
+#define CAL_HUM_OFFSET  0.0000f

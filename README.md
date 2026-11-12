@@ -2,7 +2,7 @@
 
 A fog-resilient road-lane lighting prototype. An Arduino Uno measures fog with three cheap sensors, an
 on-board edge-AI model classifies the air as **CLEAR / LIGHT FOG / DENSE FOG**, and eight guide lights
-(through a 74HC595) switch on and chase at a speed and brightness that depend on the fog density.
+(through a 74HC595) switch on and chase at a speed that depends on the fog density.
 If a sensor fails the system falls back to a fail-safe so the road is never left dark.
 
 > Full build and usage guide (wiring, calibration, recording data, training): **[README.id.md](README.id.md)** (Indonesian).
@@ -14,7 +14,7 @@ If a sensor fails the system falls back to a fail-safe so the road is never left
   laser + phototransistor path whose attenuation is measured with the laser switched ON and OFF so sunlight cancels out.
 - **Decision:** softmax logistic regression on five features, run directly on the Uno, plus hysteresis (fast up, slow down)
   and fail-safe rules for DHT11 and laser faults. Weights are trained from your own recordings (`tools/train_model.py`).
-- **Output:** 74HC595 chasing lights (OE pin PWM = brightness), 16x2 LCD, status LED and a CSV telemetry stream over USB.
+- **Output:** 74HC595 chasing lights (on/off, no PWM), 16x2 LCD, status LED and a CSV telemetry stream over USB.
 
 ## Repository layout
 | Path | What it is |
@@ -33,7 +33,7 @@ If a sensor fails the system falls back to a fail-safe so the road is never left
    (`python dashboard/server.py --sim --open`).
 
 The dashboard monitors everything (fog state and probabilities, the five features, laser attenuation, lights, faults,
-calibration) and sends commands to the board over USB serial: calibrate, demo mode, and settings such as brightness
+calibration) and sends commands to the board over USB serial: calibrate, demo mode, and settings such as chase speed
 and confirmation times (stored in the Uno's EEPROM).
 
 ## Code graph

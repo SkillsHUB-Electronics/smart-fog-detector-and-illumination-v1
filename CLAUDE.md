@@ -73,13 +73,14 @@ Semua pekerjaan di proyek ini, dari sesi mana pun, wajib:
 3. Menyebutkan di laporan akhir bahwa kedua aturan ini diikuti.
 
 ## Dashboard (PC) - catatan untuk sesi berikutnya
+- **Menu (2026-10-20)** meniru konsol `..\Arduino Car Distance Alarm\console`: Dashboard (Live + riwayat sensor), Test IO, Learning, Calibration, Serial Monitor (= halaman log), Settings, Guide, About, Author. Test IO memakai `!io ...` (firmware `handleIo()`, simulator hanya membalas, server `POST /api/io`). Author = tim yang bisa diedit seperti `..\Alarm System` (tabel `team` di `dashboard/data/fog_log.db`, foto di `dashboard/data/photos/`, keduanya git-ignored; `GET /api/team`, `POST /api/team/save|delete`).
 - `START_DASHBOARD.bat` -> `dashboard/server.py` (stdlib, port 5200, hanya localhost) + `dashboard/static/index.html`; `dashboard/simulator.py` = kembaran firmware.
   Gaya halaman meniru `..\Camel Pedestrian` (folder itu tidak boleh diubah dari sini).
 - Server memakai `tools/serial_port.py` dan membaca baris `H,`/`D,`/`S,`/`C,`/`#`. Hanya satu program per port COM (dashboard, `RECORD_DATA.bat`, Serial Monitor).
 - **Firmware dan simulator harus tetap identik.** Jika logika `.ino` berubah (`computeFeatures`, `runModel`, `checkFaults`, `updateState`, `currentMode`,
-  `brightnessFor`, kalibrasi, parser serial), ubah `dashboard/simulator.py` juga. Konstanta dibaca simulator dari `config.h`; bobot dari `model_weights.h`.
+  kalibrasi, parser serial), ubah `dashboard/simulator.py` juga. Konstanta dibaca simulator dari `config.h`; bobot dari `model_weights.h`.
 - Baris `R,ms,dhtTemp,dhtHum,ldr,rxOff,rxOn` (2026-10-20): nilai mentah sebelum kalibrasi/rata-rata/selisih laser (DHT11 sebelum gain/offset, satu `analogRead` LDR dan receiver laser OFF/ON); dicetak setelah `S,`, ditampilkan di kartu Live "Raw sensor readings", simulator ikut mencetaknya. Kolom `D,` tidak berubah.
-- Protokol tambahan (firmware): `!get`, `!set key=nilai`, `!reset` (pengaturan di EEPROM alamat 16, `Cfg`), baris status `S,mode,bright,calibrated,dhtFails,rxSat`,
+- Protokol tambahan (firmware): `!get`, `!set key=nilai`, `!reset` (pengaturan di EEPROM alamat 16, `Cfg`), baris status `S,mode,calibrated,dhtFails,rxSat,light,pDay,pTwilight,pNight` (model cahaya day/twilight/night dari fitur `light`, bobot `LIGHT_W/LIGHT_B` di `model_weights.h`, `runLight()` firmware = `run_light()` simulator; CSV rekaman punya kolom `light_cond`; trainer melatih model cahaya bila tiap kelas >= 5 baris) (kolom `bright` dan setelan kecerahan/malam dihapus 2026-10-20: tanpa PWM),
   baris `C,...`. Kolom `D,` tidak diubah (recorder dan `train_model.py` bergantung padanya). Batas nilai: `CFG_LIMITS` di simulator = `setCfg()` di firmware.
 - Rekaman simulator disimpan sebagai `data/sim_*.csv` agar tidak ikut training (`train_*.csv`).
 - **LCD I2C (2026-10-20):** LCD kini lewat backpack I2C (SDA=A4, SCL=A5, `LCD_I2C_ADDR` 0x27, library `LiquidCrystal I2C`); **Revisi 2026-10-20:** 74HC595 tanpa pin OE/PWM (OE ke GND; kecerahan tidak lagi diterapkan ke LED, nilai `bright` tetap dilaporkan di telemetri), SH_CP/ST_CP/DS = D13/D12/D11 lewat `shiftOut` (bukan SPI), tombol CAL=D3, PAGE=D4, status LED=D5 (A3 bebas). Dikompilasi OK (19492 B / 60 %, RAM 1452 B / 70 %). Cadangan `backups/pre_nopwm/`. Cadangan di `backups/pre_i2c/`.
